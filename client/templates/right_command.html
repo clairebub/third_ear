@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>Please Choose The Right Command</title>
+	<link rel="stylesheet" href="https://cdn.bootcss.com/bootstrap/3.3.7/css/bootstrap.min.css">  
+	<script src="https://cdn.bootcss.com/jquery/2.1.1/jquery.min.js"></script>
+	<script src="https://cdn.bootcss.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+</head>
+<body>
+
+<div class="container">
+  <h2>Choose The Action You Really Want</h2>
+  <p>You can choose one of actions listed below</p>
+	<script type="text/javascript">
+		var right = {{right}}
+	if( right == 0 ) {
+    alert("You never record this command, please choose the true one");
+}
+	</script>
+
+<form role="form" method='post'>
+	<div class="col-xs-5">
+		<label for="name">Choose Now!</label>
+		<select name="right_command" class="form-control">
+			<option selected>--Please Choose One Action</option>
+			<option>Turn Up Volume</option>
+			<option>Lower The Volume</option>
+			<option>Mute</option>
+			<option>Mute Off</option>
+			<option>Open The Bluetooth</option>
+			<option>Screen Lights Up</option>
+			<option>Make Screen Dark</option>
+			<option>Close The Screen</option>
+			<option>Turn On The Screen</option>
+			<option>Launch Google Map</option>
+			<option>Background The App</option>
+			<option>Write A Message</option>
+			<option>Load Samsung Website</option>
+			<option>Play A Music</option>
+		</select>
+		<button class="btn btn-default" type="submit">Go!</button>
+	</div>
+</form>
+
+</div>
+</body>
+</html>
