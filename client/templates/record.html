@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>Record Your Voice</title>
+	<link rel="stylesheet" href="https://cdn.bootcss.com/bootstrap/3.3.7/css/bootstrap.min.css">  
+	<script src="https://cdn.bootcss.com/jquery/2.1.1/jquery.min.js"></script>
+	<script src="https://cdn.bootcss.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+	<script type="text/javascript"> 
+var counter = {{ counter }}	
+console.log(counter);
+$(function() { 
+    $(".btn").click(function(){
+	if (counter < 4){
+        $(this).button('loading').delay(2000).queue(function() {
+            $(this).button('reset');
+            $(this).dequeue();
+        });
+		}
+	if (counter = 4){
+		$(this).addClass('disabled');
+		}
+    });
+});   
+</script>
+</head>
+<body>
+
+<div class="container">
+  <h2>Record Your Private Voice Command</h2>
+  <p>Instructions:</p>
+  <p>1. You need to click Start to record your voice five times</p>
+  <p>2. You don't need to click a button to stop, we will automatically detect your voice</p>
+  <p>3. You should click Start when it is bright</p>
+     
+<form role="form" method='post'>
+	<div class="col-xs-5">
+		<label for="name">Record Now!</label>
+		 <button type="submit" class="btn btn-default" data-loading-text="Detecting...">Start</button>
+	</div>
+</form>
+</div>
+</body>
+</html>
