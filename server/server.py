@@ -233,44 +233,8 @@ def check_string(string):
         return result
 
 if __name__ == "__main__":
-    #os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1, 2, 3, 4, 5, 6, 7"
-    # config = tf.ConfigProto()
-    # config.gpu_options.allow_growth = True
-    # sess = tf.Session(config=config)
-    # K.set_session(sess)
-
-    if False:
-        action_host = '192.168.1.21'
-        action_port = 50008
-        action_s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        action_s.settimeout(None)
-        try:
-            action_s.connect((action_host, action_port))
-            print "Connected to action host"
-        except Exception as e:
-            print e
-            sys.exit()
-            print('Unable to connect action host')
-
-
-    # train the base model
-    if True:
-        print str(datetime.now())
-        data, width = base_data_process()
-        print "base data labels and width: ", len(data.keys()), width
-
-        width = 383
-        org = range(10)
-        train_data, train_labels = data_prepare(data, org, width)
-        print train_data.shape, train_labels
-        base_model = base_model_train(train_data, train_labels)
-        sys.exit(0)
-
-    base_model = load_model('weights.best.hdf5')
-    base_tun_data_index = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-    # tun_data_base, tun_labels_base = data_fine_tuning(data, base_tun_data_index, 5)
-    # tun_data, tun_labels = tun_data_base[:], tun_labels_base[:]
-    print "Base model prepared"
+    base_model = load_model('../train/weights.best.hdf5')
+    print base_model.summary()
 
     HOST = ''
     SOCKET_LIST = []
@@ -282,9 +246,7 @@ if __name__ == "__main__":
     server_socket.bind((HOST, PORT))
     server_socket.listen(10)
     SOCKET_LIST.append(server_socket)
-    print "Ready to connect"
-
-
+    print "Ready to accept connection"
 
     exist_files = set()
     while 1:
