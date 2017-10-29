@@ -266,35 +266,5 @@ def ssh_scp_put(host, port, user, password, local_files):
         remote_file = '/SAL_Extended/shane.z/xiangyu/work/dark/data/reddots/commands/' + file
         sftp.put(local_file, remote_file)
 
-
-
-
 if __name__ == "__main__":
-    # scp_user = 'shane.z'
-    # scp_host = '105.145.88.51'
-    # scp_port = 22
-    # scp_password = 'zengxy789'
-
-    # host = '105.145.88.62'
-    # port = 5021
-    # s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    # s.settimeout(None)
-    # try:
-    #     s.connect((host, port))
-    #     print "Connected to remote host"
-    # except:
-    #     print('Unable to connect')
-    #     sys.exit()
-
     app.run(debug=True)
-    #choice_input = raw_input("please choose mode: 1.add a new command 2.test exist command \n")
-
-    # if choice_input == '1':
-    #     train(s, scp_host, scp_port, scp_user, scp_password)
-    #
-    # if choice_input == '2':
-    #     while 1:
-    #         try:
-    #             test(s, scp_host, scp_port, scp_user, scp_password)
-    #         except KeyboardInterrupt:
-    #             break
