@@ -1,0 +1,26 @@
+description = """
+Trying out Gradle build.
+
+# to run a task named 'hello'
+gradle hello
+"""
+
+apply plugin: 'java'
+
+task hello {
+  group 'vogella'
+  description 'The hello task greets Gradle by saying "Hello Gradle"'
+
+  doFirst {
+    println 'Hello Gradle'
+  }
+  doLast {
+    println 'Bye bye Gradle'
+  }
+}
+
+task invokedAfterCompileJava(dependsOn: 'compileJava')  {
+    doLast {
+        println 'This will be invoked right after the compileJava task is done'
+    }
+}
