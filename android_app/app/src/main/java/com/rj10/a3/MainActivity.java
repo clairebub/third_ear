@@ -3,12 +3,14 @@ package com.rj10.a3;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.os.Handler;
+import android.os.ResultReceiver;
 import android.speech.RecognizerIntent;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
@@ -19,8 +21,9 @@ public class MainActivity extends AppCompatActivity {
     private final int REQ_CODE_SPEECH_INPUT = 100;
 
     Button buttonOnOff = null;
+    TextView mTextView = null;
     SpeechResultReceiver speechResultReceiver = null;
-    int clickCount = 0;
+    int requestCount = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -29,14 +32,14 @@ public class MainActivity extends AppCompatActivity {
 
         speechResultReceiver = new SpeechResultReceiver(new Handler());
 
+        mTextView = (TextView) findViewById(R.id.textView);
         buttonOnOff = (Button) findViewById(R.id.buttonOnOff);
         buttonOnOff.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                clickCount += 1;
-                String msg = String.format("clicked %d", clickCount);
-                Log.i("Deebug", msg);
-                Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_LONG).show();
+                requestCount++;
+                String msg = String.format("Starting request #%d", requestCount);
+                mTextView.setText(msg);
                 startSpeedRec();
             }
         });
@@ -79,6 +82,24 @@ public class MainActivity extends AppCompatActivity {
                 break;
             }
 
+        }
+    }
+
+    public class SpeechResultReceiver extends ResultReceiver {
+        public SpeechResultReceiver(Handler handler) {
+            super(handler);
+        }
+
+        @Override
+        protected void onReceiveResult(int resultCode, Bundle resultData) {
+            final String result = resultData.getString(SpeechService.MSG);
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    String msg = String.format("%d: %s", requestCount, result);
+                    mTextView.setText(msg);
+                }
+            });
         }
     }
 }

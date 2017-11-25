@@ -12,7 +12,7 @@ import android.util.Log;
  */
 
 public class SpeechService extends IntentService {
-
+    public static final String MSG = "msg";
     private static final String TAG = "SpeedService";
 
     public SpeechService() {
@@ -26,8 +26,13 @@ public class SpeechService extends IntentService {
         ResultReceiver rec = intent.getParcelableExtra("receiver");
         String senderName = intent.getStringExtra("sender");
 
+        try {
+            Thread.currentThread().sleep(3000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         Bundle b = new Bundle();
-        b.putString("something","aziz");
+        b.putString(MSG,"aziz 2");
         rec.send(0, b);
     }
 }
