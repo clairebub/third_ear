@@ -2,6 +2,7 @@ package com.rj10.a3;
 
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.os.Handler;
 import android.speech.RecognizerIntent;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -18,12 +19,15 @@ public class MainActivity extends AppCompatActivity {
     private final int REQ_CODE_SPEECH_INPUT = 100;
 
     Button buttonOnOff = null;
+    SpeechResultReceiver speechResultReceiver = null;
     int clickCount = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        speechResultReceiver = new SpeechResultReceiver(new Handler());
 
         buttonOnOff = (Button) findViewById(R.id.buttonOnOff);
         buttonOnOff.setOnClickListener(new View.OnClickListener() {
@@ -39,6 +43,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     void startSpeedRec() {
+        Intent intent = new Intent(this, SpeechService.class);
+        intent.putExtra("receiver", speechResultReceiver);
+        intent.putExtra("sender", "stem main");
+        startService(intent);
+
+    }
+/*
+    void startSpeedRec() {
         Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
                 RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
@@ -51,7 +63,7 @@ public class MainActivity extends AppCompatActivity {
             Log.w("Deebug", a);
         }
     }
-
+*/
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
