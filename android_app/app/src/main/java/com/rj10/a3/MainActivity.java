@@ -26,11 +26,47 @@ public class MainActivity extends AppCompatActivity
 
     private final int REQ_CODE_SPEECH_INPUT = 100;
     private final int PERMISSION_REQUEST_READ_PHONE_STATE = 1;
+    private final int PERMISSION_REQUEST_RECORD_AUDIO = 2;
 
-    Button buttonOnOff = null;
-    TextView mTextView = null;
+    Button mOnButton;
+    TextView mStatus;
     SpeechResultReceiver speechResultReceiver = null;
     int requestCount = 0;
+    private VoiceRecorder mVoiceRecorder;
+    private SpeechService mSpeechService;
+
+    private final VoiceRecorder.Callback mVoiceCallback = new VoiceRecorder.Callback() {
+
+        @Override
+        public void onVoiceStart() {
+            showStatus("onVoiceStart");
+            if (mSpeechService != null) {
+                mSpeechService.startRecognizing(mVoiceRecorder.getSampleRate());
+            }
+        }
+
+        @Override
+        public void onVoice(byte[] data, int size) {
+            showStatus("onVoice");
+            if (mSpeechService != null) {
+                mSpeechService.recognize(data, size);
+            }
+        }
+
+        @Override
+        public void onVoiceEnd() {
+            showStatus("onVoiceEnd");
+            if (mSpeechService != null) {
+                mSpeechService.finishRecognizing();
+            }
+        }
+
+        @Override
+        public void onStatusUpdate(String msg) {
+            showStatus(msg);
+        }
+    };
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,21 +75,40 @@ public class MainActivity extends AppCompatActivity
 
         speechResultReceiver = new SpeechResultReceiver(new Handler());
 
-        mTextView = (TextView) findViewById(R.id.textView);
-        buttonOnOff = (Button) findViewById(R.id.buttonOnOff);
-        buttonOnOff.setOnClickListener(new View.OnClickListener() {
+        mStatus = (TextView) findViewById(R.id.status);
+        mOnButton = (Button) findViewById(R.id.buttonOn);
+        mOnButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 requestCount++;
                 String msg = String.format("Starting request #%d", requestCount);
-                mTextView.setText(msg);
-                startSpeedRec();
+                mStatus.setText(msg);
+                startSpeechRec();
             }
         });
     }
 
+    private void startSpeechRec() {
+        checkPermissions(Manifest.permission.RECORD_AUDIO, PERMISSION_REQUEST_RECORD_AUDIO);
+
+        if (mVoiceRecorder != null) {
+            mVoiceRecorder.stop();
+        }
+        mVoiceRecorder = new VoiceRecorder(mVoiceCallback);
+        mVoiceRecorder.start();
+    }
+
+    private void stopSpeechRec() {
+        if (mVoiceRecorder != null) {
+            mVoiceRecorder.stop();
+            mVoiceRecorder = null;
+        }
+    }
+
+    /*
     void startSpeedRec() {
         checkPermissions(Manifest.permission.READ_PHONE_STATE, PERMISSION_REQUEST_READ_PHONE_STATE);
+        checkPermissions(Manifest.permission.RECORD_AUDIO, PERMISSION_REQUEST_RECORD_AUDIO);
 
         Intent intent = new Intent(this, SpeechService.class);
         intent.putExtra("receiver", speechResultReceiver);
@@ -61,7 +116,7 @@ public class MainActivity extends AppCompatActivity
         startService(intent);
 
     }
-/*
+
     void startSpeedRec() {
         Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
@@ -106,7 +161,7 @@ public class MainActivity extends AppCompatActivity
                 @Override
                 public void run() {
                     String msg = String.format("%d: %s", requestCount, result);
-                    mTextView.setText(msg);
+                    mStatus.setText(msg);
                 }
             });
         }
@@ -126,7 +181,6 @@ public class MainActivity extends AppCompatActivity
     @Override
     public void onRequestPermissionsResult(
             int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        // super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == PERMISSION_REQUEST_READ_PHONE_STATE) {
             if (grantResults.length == 1 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 // all good
@@ -134,6 +188,24 @@ public class MainActivity extends AppCompatActivity
                 Toast.makeText(this,
                         "The app won't read phone state.", Toast.LENGTH_LONG).show();
             }
+        }  else if (requestCode == PERMISSION_REQUEST_RECORD_AUDIO) {
+            if (grantResults.length == 1 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // all good
+            } else {
+                Toast.makeText(this,
+                        "The app won't record audio.", Toast.LENGTH_LONG).show();
+            }
+        } else {
+            super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         }
+    }
+
+    void showStatus(final String msg) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                mStatus.setText(msg);
+            }
+        });
     }
 }
