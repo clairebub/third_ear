@@ -9,7 +9,7 @@ import android.telephony.TelephonyManager;
 import android.util.Log;
 
 /**
- * Created by rjtang on 11/23/17.
+ * Created on 11/23/17.
  */
 
 public class PhoneStateReceiver extends BroadcastReceiver {
