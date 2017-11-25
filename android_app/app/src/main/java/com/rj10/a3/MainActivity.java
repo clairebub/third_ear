@@ -1,10 +1,15 @@
 package com.rj10.a3;
 
+import android.Manifest;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Handler;
 import android.os.ResultReceiver;
 import android.speech.RecognizerIntent;
+import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -16,9 +21,11 @@ import android.widget.Toast;
 import java.util.ArrayList;
 import java.util.Locale;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity
+        implements ActivityCompat.OnRequestPermissionsResultCallback {
 
     private final int REQ_CODE_SPEECH_INPUT = 100;
+    private final int PERMISSION_REQUEST_READ_PHONE_STATE = 1;
 
     Button buttonOnOff = null;
     TextView mTextView = null;
@@ -46,6 +53,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     void startSpeedRec() {
+        checkPermissions(Manifest.permission.READ_PHONE_STATE, PERMISSION_REQUEST_READ_PHONE_STATE);
+
         Intent intent = new Intent(this, SpeechService.class);
         intent.putExtra("receiver", speechResultReceiver);
         intent.putExtra("sender", "stem main");
@@ -100,6 +109,31 @@ public class MainActivity extends AppCompatActivity {
                     mTextView.setText(msg);
                 }
             });
+        }
+    }
+
+    private void checkPermissions(String permission, int requestCode) {
+        if (ContextCompat.checkSelfPermission(this, permission)
+                != PackageManager.PERMISSION_GRANTED) {
+            Log.d("deebug", "requesting permission for " + permission);
+            ActivityCompat.requestPermissions(this,
+                    new String[]{permission},
+                    requestCode);
+        }
+        Log.d("deebug", "has permission: " + permission);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(
+            int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        // super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == PERMISSION_REQUEST_READ_PHONE_STATE) {
+            if (grantResults.length == 1 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // all good
+            } else {
+                Toast.makeText(this,
+                        "The app won't read phone state.", Toast.LENGTH_LONG).show();
+            }
         }
     }
 }
