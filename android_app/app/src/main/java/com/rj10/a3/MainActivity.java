@@ -2,9 +2,13 @@ package com.rj10.a3;
 
 import android.Manifest;
 import android.content.ActivityNotFoundException;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.os.Handler;
+import android.os.IBinder;
 import android.os.ResultReceiver;
 import android.speech.RecognizerIntent;
 import android.support.annotation.NonNull;
@@ -34,6 +38,7 @@ public class MainActivity extends AppCompatActivity
     int requestCount = 0;
     private VoiceRecorder mVoiceRecorder;
     private SpeechService mSpeechService;
+    private SpeechApiService mSpeechApiService;
 
     private final VoiceRecorder.Callback mVoiceCallback = new VoiceRecorder.Callback() {
 
@@ -82,10 +87,19 @@ public class MainActivity extends AppCompatActivity
             public void onClick(View v) {
                 requestCount++;
                 String msg = String.format("Starting request #%d", requestCount);
+                msg = "foo: " + mSpeechApiService.foo();
                 mStatus.setText(msg);
-                startSpeechRec();
+                // startSpeechRec();
             }
         });
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        // Bind to SpeechApiService
+        Intent intent = new Intent(this, SpeechApiService.class);
+        bindService(intent, mSpeechApiConnection, Context.BIND_AUTO_CREATE);
     }
 
     private void startSpeechRec() {
@@ -96,6 +110,11 @@ public class MainActivity extends AppCompatActivity
         }
         mVoiceRecorder = new VoiceRecorder(mVoiceCallback);
         mVoiceRecorder.start();
+
+        Intent intent = new Intent(this, SpeechService.class);
+        intent.putExtra("receiver", speechResultReceiver);
+        intent.putExtra("sender", "stem main");
+        startService(intent);
     }
 
     private void stopSpeechRec() {
@@ -208,4 +227,20 @@ public class MainActivity extends AppCompatActivity
             }
         });
     }
+
+    /** Defines callbacks for service binding, passed to bindService() */
+    private final ServiceConnection mSpeechApiConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName className,
+                                       IBinder service) {
+            // We've bound to LocalService, cast the IBinder and get LocalService instance
+            SpeechApiService.SpeechApiBinder binder = (SpeechApiService.SpeechApiBinder) service;
+            mSpeechApiService = binder.getService();
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName arg0) {
+            mSpeechApiService = null;
+        }
+    };
 }

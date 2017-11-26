@@ -15,6 +15,18 @@ public class SpeechService extends IntentService {
     public static final String MSG = "msg";
     private static final String TAG = "SpeedService";
 
+    public interface Listener {
+
+        /**
+         * Called when a new piece of text was recognized by the Speech API.
+         *
+         * @param text    The text.
+         * @param isFinal {@code true} when the API finished processing audio.
+         */
+        void onSpeechRecognized(String text, boolean isFinal);
+
+    }
+
     public SpeechService() {
         super("SpeechService");
     }
