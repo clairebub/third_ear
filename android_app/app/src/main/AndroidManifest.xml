@@ -24,6 +24,8 @@
         </receiver>
         <service
             android:name=".SpeechService" android:exported="false"/>
+        <service
+            android:name=".SpeechApiService" android:exported="false"/>
     </application>
 
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
