@@ -25,10 +25,13 @@ local.properties
 .classpath
 .project
 
-# Android Studio
+# IntelliJ
 *.iml
-.idea
-.gradle
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/gradle.xml
+.idea/dictionaries
+.idea/libraries
 
 
 #NDK
