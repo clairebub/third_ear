@@ -7,15 +7,45 @@
     tools:context="com.rj10.a3.MainActivity"
     tools:layout_editor_absoluteY="81dp">
 
+    <RadioGroup
+        android:id="@+id/radioGroup"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="8dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="32dp"
+        android:checkedButton="@+id/radioButton_local"
+        android:orientation="vertical"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.897"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <RadioButton
+            android:id="@+id/radioButton_local"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Local "
+            tools:layout_editor_absoluteX="30dp"
+            tools:layout_editor_absoluteY="75dp" />
+
+        <RadioButton
+            android:id="@+id/radioButton_cloud"
+            android:layout_width="163dp"
+            android:layout_height="67dp"
+            android:text="Cloud"
+            tools:layout_editor_absoluteX="16dp"
+            tools:layout_editor_absoluteY="38dp" />
+    </RadioGroup>
+
     <TextView
         android:id="@+id/status"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginBottom="8dp"
         android:layout_marginEnd="8dp"
         android:layout_marginStart="8dp"
         android:layout_marginTop="8dp"
-        android:text="Hello World 0.1b!"
         app:layout_constraintBottom_toTopOf="@+id/buttonOn"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintLeft_toLeftOf="parent"
@@ -32,5 +62,6 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent" />
+
 
 </android.support.constraint.ConstraintLayout>
