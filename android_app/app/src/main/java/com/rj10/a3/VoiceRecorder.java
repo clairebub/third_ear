@@ -75,8 +75,8 @@ public class VoiceRecorder {
         // Start recording.
         mAudioRecord.startRecording();
         mCallback.onStatusUpdate("AudioRecord.startRecording()");
-        // Start processing the captured audio.
-        mThread = new Thread(new ProcessVoice());
+        // Start the process of capturing audio.
+        mThread = new Thread(new ProcessVoiceRunnable());
         mThread.start();
     }
 
@@ -149,7 +149,7 @@ public class VoiceRecorder {
      * Continuously processes the captured audio and notifies {@link #mCallback} of corresponding
      * events.
      */
-    private class ProcessVoice implements Runnable {
+    private class ProcessVoiceRunnable implements Runnable {
 
         @Override
         public void run() {
@@ -159,6 +159,10 @@ public class VoiceRecorder {
                         break;
                     }
                     final int size = mAudioRecord.read(mBuffer, 0, mBuffer.length);
+                    // TODO: need to check if size is negative
+                    if (size == 0) {
+                        continue;
+                    }
                     final long now = System.currentTimeMillis();
                     if (isHearingVoice(mBuffer, size)) {
                         if (mLastVoiceHeardMillis == Long.MAX_VALUE) {
