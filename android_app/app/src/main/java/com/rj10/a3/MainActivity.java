@@ -35,7 +35,6 @@ public class MainActivity extends AppCompatActivity
 
     private final int REQ_CODE_SPEECH_RECOG_LOCAL = 100;
 
-    Button mOnButton;
     TextView mStatus;
     RadioGroup mRadioGroup;
 
@@ -53,11 +52,12 @@ public class MainActivity extends AppCompatActivity
 
         mStatus = (TextView) findViewById(R.id.status);
         mStatus.setHint("Version: 0.1c");
-        mOnButton = (Button) findViewById(R.id.buttonOn);
-        mOnButton.setOnClickListener(new View.OnClickListener() {
+        Button onOffButton = (Button) findViewById(R.id.buttonOn);
+        onOffButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                handleOnClick();
+                mRequestCount++;
+                handleOnClick((Button) v);
             }
         });
 
@@ -66,10 +66,16 @@ public class MainActivity extends AppCompatActivity
         mRadioGroup.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(RadioGroup radioGroup, int checkedId) {
+                if (checkedId == R.id.radioButton_local) {
+                    // cloud recognition runs in the background. need to make sure it is no
+                    // longer running if mode is switching to local
+                    stopSpeechRecCloud();
+                }
+                /*
                 RadioButton rb = (RadioButton) radioGroup.findViewById(checkedId);
                 if (null != rb && checkedId > -1) {
-                    Toast.makeText(MainActivity.this, rb.getText(), Toast.LENGTH_SHORT).show();
-                }
+                    // Toast.makeText(MainActivity.this, rb.getText(), Toast.LENGTH_SHORT).show();
+                } */
             }
         });
 
@@ -80,12 +86,13 @@ public class MainActivity extends AppCompatActivity
         mCloudSpeechResultReceiver = new CloudSpeechResultReceiver(new Handler());
     }
 
-    private void handleOnClick() {
-        mRequestCount++;
-        String msg = String.format("Starting request #%d", mRequestCount);
-        msg = "foo: " + mSpeechApiService.foo();
-        mStatus.setText(msg);
-        // startSpeechRec();
+    private void handleOnClick(Button button) {
+        CharSequence buttonText = button.getText();
+        if (buttonText.toString().equalsIgnoreCase("start")) {
+            button.setText("Stop");
+        } else {
+            button.setText("Start");
+        }
 
         int radioButtonID = mRadioGroup.getCheckedRadioButtonId();
         switch (radioButtonID) {
@@ -137,7 +144,16 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void startSpeechRecCloud() {
-        checkPermissions(Manifest.permission.RECORD_AUDIO, PERMISSION_REQUEST_RECORD_AUDIO);
+        if (!checkPermissions(
+                Manifest.permission.RECORD_AUDIO,
+                PERMISSION_REQUEST_RECORD_AUDIO)) {
+            return;
+        }
+        if (!checkPermissions(
+                Manifest.permission.READ_PHONE_STATE,
+                PERMISSION_REQUEST_READ_PHONE_STATE)) {
+            return;
+        }
 
         if (mVoiceRecorder != null) {
             mVoiceRecorder.stop();
@@ -159,20 +175,10 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-    private void startSpeechRecCloud2() {
-        checkPermissions(Manifest.permission.READ_PHONE_STATE, PERMISSION_REQUEST_READ_PHONE_STATE);
-        checkPermissions(Manifest.permission.RECORD_AUDIO, PERMISSION_REQUEST_RECORD_AUDIO);
-
-        Intent intent = new Intent(this, SpeechService.class);
-        intent.putExtra("receiver", mCloudSpeechResultReceiver);
-        intent.putExtra("sender", "stem main");
-        startService(intent);
-
-    }
-
     //
     // Callback from voice recorder to handle start/ongoing/end of voice input.
     // For cloud based speech recog streaming Api only.
+    // The callbacks of onVoice() are called from a separate thread.
     //
     private final VoiceRecorder.Callback mVoiceCallback = new VoiceRecorder.Callback() {
         @Override
@@ -239,15 +245,23 @@ public class MainActivity extends AppCompatActivity
         }
     };
 
-    private void checkPermissions(String permission, int requestCode) {
+    /**
+     * Returns whether it has the permission, start the permission request flow asynchchronously
+     * if it deosn't have the permission.
+     * @param permission
+     * @param requestCode
+     * @return true if it has the permission.
+     */
+    private boolean checkPermissions(String permission, int requestCode) {
         if (ContextCompat.checkSelfPermission(this, permission)
                 != PackageManager.PERMISSION_GRANTED) {
             Log.d("deebug", "requesting permission for " + permission);
             ActivityCompat.requestPermissions(this,
                     new String[]{permission},
                     requestCode);
+            return false;
         }
-        Log.d("deebug", "has permission: " + permission);
+        return true;
     }
 
     @Override
@@ -271,8 +285,8 @@ public class MainActivity extends AppCompatActivity
             super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         }
     }
-    
-    void showStatus(final String msg) {
+
+    void showStatus(final CharSequence msg) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -281,8 +295,8 @@ public class MainActivity extends AppCompatActivity
         });
     }
 
-    private void deebug(final String msg) {
-        Log.d("deebug", msg);
+    private void deebug(final CharSequence msg) {
+        Log.d("deebug", msg.toString());
         Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_SHORT).show();
     }
 }
