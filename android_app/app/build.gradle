@@ -1,4 +1,5 @@
 apply plugin: 'com.android.application'
+apply plugin: 'com.google.protobuf'
 
 android {
     compileSdkVersion 26
@@ -18,7 +19,35 @@ android {
     }
 }
 
+protobuf {
+    protoc {
+        artifact = 'com.google.protobuf:protoc:3.3.0'
+    }
+    plugins {
+        javalite {
+            artifact = "com.google.protobuf:protoc-gen-javalite:3.0.0"
+        }
+        grpc {
+            artifact = "io.grpc:protoc-gen-grpc-java:1.7.0"
+        }
+    }
+    generateProtoTasks {
+        all().each { task ->
+            task.plugins {
+                javalite {}
+                grpc {
+                    // Options added to --grpc_out
+                    option 'lite'
+                }
+            }
+        }
+    }
+}
+
 dependencies {
+    compile 'io.grpc:grpc-okhttp:1.7.0'
+    compile 'io.grpc:grpc-protobuf-lite:1.7.0'
+    compile 'io.grpc:grpc-stub:1.7.0'
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation 'com.android.support:appcompat-v7:26.1.0'
     implementation 'com.android.support.constraint:constraint-layout:1.0.2'
@@ -26,3 +55,4 @@ dependencies {
     androidTestImplementation 'com.android.support.test:runner:1.0.1'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.1'
 }
+
