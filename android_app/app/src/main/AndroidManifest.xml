@@ -23,8 +23,6 @@
             </intent-filter>
         </receiver>
         <service
-            android:name=".SpeechService" android:exported="false"/>
-        <service
             android:name=".SpeechApiService" android:exported="false"/>
     </application>
 

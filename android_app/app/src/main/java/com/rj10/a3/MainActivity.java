@@ -38,12 +38,25 @@ public class MainActivity extends AppCompatActivity
     TextView mStatus;
     RadioGroup mRadioGroup;
 
-    CloudSpeechResultReceiver mCloudSpeechResultReceiver = null;
     private VoiceRecorder mVoiceRecorder;
-    private SpeechService mSpeechService;
     private SpeechApiService mSpeechApiService;
-
     int mRequestCount = 0;
+
+    /** Defines callbacks for service binding, passed to bindService() */
+    private final ServiceConnection mSpeechApiServiceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName className,
+                                       IBinder service) {
+            // We've bound to LocalService, cast the IBinder and get LocalService instance
+            SpeechApiService.SpeechApiBinder binder = (SpeechApiService.SpeechApiBinder) service;
+            mSpeechApiService = binder.getService();
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName arg0) {
+            mSpeechApiService = null;
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -78,12 +91,18 @@ public class MainActivity extends AppCompatActivity
                 } */
             }
         });
+    }
 
-        // Bind to SpeechApiService
-        Intent intent = new Intent(this, SpeechApiService.class);
-        bindService(intent, mSpeechApiConnection, Context.BIND_AUTO_CREATE);
-
-        mCloudSpeechResultReceiver = new CloudSpeechResultReceiver(new Handler());
+    /**
+     * Bind to the speech api service only when the activity is in use. You can do it at OnStart()
+     * or at onResume()
+     */
+    @Override
+    protected void onStart() {
+        super.onStart();
+        // Prepare Cloud Speech API
+        bindService(new Intent(this, SpeechApiService.class),
+                mSpeechApiServiceConnection, BIND_AUTO_CREATE);
     }
 
     private void handleOnClick(Button button) {
@@ -160,11 +179,6 @@ public class MainActivity extends AppCompatActivity
         }
         mVoiceRecorder = new VoiceRecorder(mVoiceCallback);
         mVoiceRecorder.start();
-
-        Intent intent = new Intent(this, SpeechService.class);
-        intent.putExtra("receiver", mCloudSpeechResultReceiver);
-        intent.putExtra("sender", "stem main");
-        startService(intent);
     }
 
 
@@ -184,64 +198,36 @@ public class MainActivity extends AppCompatActivity
         @Override
         public void onVoiceStart() {
             showStatus("onVoiceStart");
-            if (mSpeechService != null) {
-                mSpeechService.startRecognizing(mVoiceRecorder.getSampleRate());
+            if (mSpeechApiService == null) {
+                deebug("mSpeechApiService is null onVoiceStart");
+                return;
             }
+            mSpeechApiService.startRecognizing(mVoiceRecorder.getSampleRate());
         }
 
         @Override
         public void onVoice(byte[] data, int size) {
             showStatus("onVoice");
-            if (mSpeechService != null) {
-                mSpeechService.recognize(data, size);
+            if (mSpeechApiService == null) {
+                deebug("mSpeechApiService is null onVoice");
+                return;
             }
+            mSpeechApiService.recognize(data, size);
         }
 
         @Override
         public void onVoiceEnd() {
             showStatus("onVoiceEnd");
-            if (mSpeechService != null) {
-                mSpeechService.finishRecognizing();
+            if (mSpeechApiService != null) {
+                deebug("mSpeechApiService is null onVoiceEnd");
+                return;
             }
+            mSpeechApiService.finishRecognizing();
         }
 
         @Override
         public void onStatusUpdate(String msg) {
             showStatus(msg);
-        }
-    };
-
-    public class CloudSpeechResultReceiver extends ResultReceiver {
-        public CloudSpeechResultReceiver(Handler handler) {
-            super(handler);
-        }
-
-        @Override
-        protected void onReceiveResult(int resultCode, Bundle resultData) {
-            final String result = resultData.getString(SpeechService.MSG);
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    String msg = String.format("%d: %s", mRequestCount, result);
-                    mStatus.setText(msg);
-                }
-            });
-        }
-    }
-
-    /** Defines callbacks for service binding, passed to bindService() */
-    private final ServiceConnection mSpeechApiConnection = new ServiceConnection() {
-        @Override
-        public void onServiceConnected(ComponentName className,
-                                       IBinder service) {
-            // We've bound to LocalService, cast the IBinder and get LocalService instance
-            SpeechApiService.SpeechApiBinder binder = (SpeechApiService.SpeechApiBinder) service;
-            mSpeechApiService = binder.getService();
-        }
-
-        @Override
-        public void onServiceDisconnected(ComponentName arg0) {
-            mSpeechApiService = null;
         }
     };
 
