@@ -90,6 +90,7 @@ public class SpeechApiService extends Service {
                 if (result.getAlternativesCount() > 0) {
                     final SpeechRecognitionAlternative alternative = result.getAlternatives(0);
                     text = alternative.getTranscript();
+                    Log.w(TAG, "recognition result: " + text);
                 }
             }
             /* TODO: plug in the listener
