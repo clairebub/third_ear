@@ -25,13 +25,14 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
+import java.util.StringJoiner;
 
 public class MainActivity extends AppCompatActivity
         implements ActivityCompat.OnRequestPermissionsResultCallback {
 
-    private final int PERMISSION_REQUEST_READ_PHONE_STATE = 1;
-    private final int PERMISSION_REQUEST_RECORD_AUDIO = 2;
+    private final int PERMISSIONS_REQUEST_FOR_CLOUD = 1;
 
     private final int REQ_CODE_SPEECH_RECOG_LOCAL = 100;
 
@@ -50,11 +51,13 @@ public class MainActivity extends AppCompatActivity
             // We've bound to LocalService, cast the IBinder and get LocalService instance
             SpeechApiService.SpeechApiBinder binder = (SpeechApiService.SpeechApiBinder) service;
             mSpeechApiService = binder.getService();
+            deebug("SpeechApiService connected: " + mSpeechApiService);
         }
 
         @Override
         public void onServiceDisconnected(ComponentName arg0) {
             mSpeechApiService = null;
+            deebug("SpeechApiService disconnected." );
         }
     };
 
@@ -75,7 +78,7 @@ public class MainActivity extends AppCompatActivity
         });
 
         mRadioGroup = (RadioGroup) findViewById(R.id.radioGroup);
-        mRadioGroup.check(R.id.radioButton_local);
+        mRadioGroup.check(R.id.radioButton_cloud);
         mRadioGroup.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(RadioGroup radioGroup, int checkedId) {
@@ -163,14 +166,12 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void startSpeechRecCloud() {
-        if (!checkPermissions(
+        String[] permissions = new String[] {
+                Manifest.permission.INTERNET,
                 Manifest.permission.RECORD_AUDIO,
-                PERMISSION_REQUEST_RECORD_AUDIO)) {
-            return;
-        }
-        if (!checkPermissions(
-                Manifest.permission.READ_PHONE_STATE,
-                PERMISSION_REQUEST_READ_PHONE_STATE)) {
+                Manifest.permission.READ_PHONE_STATE
+        };
+        if (!checkPermissions(permissions, PERMISSIONS_REQUEST_FOR_CLOUD)) {
             return;
         }
 
@@ -197,7 +198,7 @@ public class MainActivity extends AppCompatActivity
     private final VoiceRecorder.Callback mVoiceCallback = new VoiceRecorder.Callback() {
         @Override
         public void onVoiceStart() {
-            showStatus("onVoiceStart");
+            deebug("onVoiceStart");
             if (mSpeechApiService == null) {
                 deebug("mSpeechApiService is null onVoiceStart");
                 return;
@@ -207,7 +208,7 @@ public class MainActivity extends AppCompatActivity
 
         @Override
         public void onVoice(byte[] data, int size) {
-            showStatus("onVoice");
+            deebug("onVoice");
             if (mSpeechApiService == null) {
                 deebug("mSpeechApiService is null onVoice");
                 return;
@@ -217,7 +218,7 @@ public class MainActivity extends AppCompatActivity
 
         @Override
         public void onVoiceEnd() {
-            showStatus("onVoiceEnd");
+            deebug("onVoiceEnd");
             if (mSpeechApiService != null) {
                 deebug("mSpeechApiService is null onVoiceEnd");
                 return;
@@ -234,38 +235,44 @@ public class MainActivity extends AppCompatActivity
     /**
      * Returns whether it has the permission, start the permission request flow asynchchronously
      * if it deosn't have the permission.
-     * @param permission
+     * @param permissions
      * @param requestCode
      * @return true if it has the permission.
      */
-    private boolean checkPermissions(String permission, int requestCode) {
-        if (ContextCompat.checkSelfPermission(this, permission)
-                != PackageManager.PERMISSION_GRANTED) {
-            Log.d("deebug", "requesting permission for " + permission);
-            ActivityCompat.requestPermissions(this,
-                    new String[]{permission},
-                    requestCode);
-            return false;
+    private boolean checkPermissions(String[] permissions, int requestCode) {
+        List<String> permissionsMissing = new ArrayList<>();
+        for (String p: permissions) {
+            if (ContextCompat.checkSelfPermission(this, p)
+                    != PackageManager.PERMISSION_GRANTED) {
+                permissionsMissing.add(p);
+            }
         }
-        return true;
+        if (permissionsMissing.isEmpty()) {
+            return true;
+        }
+        String msg = "";
+        for (String p: permissionsMissing) {
+            if (!msg.isEmpty()) {
+                msg = msg = ", ";
+            }
+            msg += p;
+        }
+        Log.d("deebug", "requesting permission for " + msg);
+        ActivityCompat.requestPermissions(this,
+                (String[]) permissionsMissing.toArray(),
+                requestCode);
+        return false;
     }
 
     @Override
     public void onRequestPermissionsResult(
             int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        if (requestCode == PERMISSION_REQUEST_READ_PHONE_STATE) {
-            if (grantResults.length == 1 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // all good
-            } else {
-                Toast.makeText(this,
-                        "The app won't read phone state.", Toast.LENGTH_LONG).show();
-            }
-        }  else if (requestCode == PERMISSION_REQUEST_RECORD_AUDIO) {
-            if (grantResults.length == 1 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // all good
-            } else {
-                Toast.makeText(this,
-                        "The app won't record audio.", Toast.LENGTH_LONG).show();
+        if (requestCode == PERMISSIONS_REQUEST_FOR_CLOUD) {
+            for (int i = 0; i < grantResults.length; i++) {
+                if (grantResults[i] != PackageManager.PERMISSION_GRANTED) {
+                    Toast.makeText(this, "Missing permission: " + permissions[i],
+                            Toast.LENGTH_SHORT).show();
+                }
             }
         } else {
             super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -283,6 +290,6 @@ public class MainActivity extends AppCompatActivity
 
     private void deebug(final CharSequence msg) {
         Log.d("deebug", msg.toString());
-        Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_SHORT).show();
+//        Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_SHORT).show();
     }
 }
