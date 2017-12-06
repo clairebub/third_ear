@@ -3,13 +3,10 @@ package com.rj10.a3;
 import android.Manifest;
 import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
-import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
-import android.os.Handler;
 import android.os.IBinder;
-import android.os.ResultReceiver;
 import android.speech.RecognizerIntent;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
@@ -19,7 +16,6 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
-import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -27,8 +23,14 @@ import android.widget.Toast;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.StringJoiner;
 
+//
+// An app that monitors the ambient sound and do speech detection and outputs the results
+// on the screen.
+// The UI is the following:
+// 1. a button to start/stop the speech detection and indicate whether it's running
+// 2. an output area to display the detected speech
+//
 public class MainActivity extends AppCompatActivity
         implements ActivityCompat.OnRequestPermissionsResultCallback {
 
@@ -110,12 +112,19 @@ public class MainActivity extends AppCompatActivity
 
     private void handleOnClick(Button button) {
         CharSequence buttonText = button.getText();
+        deebug("button text: " + buttonText);
         if (buttonText.toString().equalsIgnoreCase("start")) {
             button.setText("Stop");
+            Toast.makeText(getApplicationContext(), "Stop", Toast.LENGTH_SHORT).show();
+            stopSpeechRec();
         } else {
             button.setText("Start");
+            Toast.makeText(getApplicationContext(), "Start", Toast.LENGTH_SHORT).show();
+            startSpeechRec();
         }
+    }
 
+    private void startSpeechRec() {
         int radioButtonID = mRadioGroup.getCheckedRadioButtonId();
         switch (radioButtonID) {
             case R.id.radioButton_local:
@@ -123,6 +132,18 @@ public class MainActivity extends AppCompatActivity
                 break;
             case R.id.radioButton_cloud:
                 startSpeechRecCloud();
+                break;
+            default:
+                deebug("unexpected radioButtonId: " + radioButtonID);
+                break;
+        }
+    }
+
+    private void stopSpeechRec() {
+        int radioButtonID = mRadioGroup.getCheckedRadioButtonId();
+        switch (radioButtonID) {
+            case R.id.radioButton_cloud:
+                stopSpeechRecCloud();
                 break;
             default:
                 deebug("unexpected radioButtonId: " + radioButtonID);
