@@ -117,6 +117,7 @@ public class SpeechApiService extends Service {
 
     @Override
     public void onCreate() {
+        Log.d(TAG, "onCreate()");
         super.onCreate();
         mHandler = new Handler();
         mHandler.post(new Runnable() {
@@ -128,7 +129,35 @@ public class SpeechApiService extends Service {
     }
 
     @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        // The service is starting, due to a call to startService()
+        Log.d(TAG, "onStartCommand()");
+        return START_NOT_STICKY;
+    }
+
+    @Nullable
+    @Override
+    public IBinder onBind(Intent intent) {
+        Log.d(TAG, "onBind()");
+        return mBinder;
+    }
+
+    @Override
+    public boolean onUnbind(Intent intent) {
+        // All clients have unbound with unbindService()
+        Log.d(TAG, "onUnbind()");
+        return true; // allow rebind
+    }
+    @Override
+    public void onRebind(Intent intent) {
+        // A client is binding to the service with bindService(),
+        // after onUnbind() has already been called
+        Log.d(TAG, "onRebind()");
+    }
+
+    @Override
     public void onDestroy() {
+        Log.d(TAG, "onDestroy()");
         super.onDestroy();
         mHandler.removeCallbacksAndMessages(null);
         mHandler = null;
@@ -144,12 +173,6 @@ public class SpeechApiService extends Service {
             }
             mApi = null;
         }
-    }
-
-    @Nullable
-    @Override
-    public IBinder onBind(Intent intent) {
-        return mBinder;
     }
 
     public class SpeechApiBinder extends Binder {
