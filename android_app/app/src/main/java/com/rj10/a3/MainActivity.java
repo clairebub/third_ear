@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.os.IBinder;
+import android.os.Looper;
 import android.speech.RecognizerIntent;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
@@ -14,6 +15,7 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.util.TimingLogger;
 import android.view.View;
 import android.widget.Button;
 import android.widget.RadioGroup;
@@ -34,6 +36,7 @@ import java.util.Locale;
 public class MainActivity extends AppCompatActivity
         implements ActivityCompat.OnRequestPermissionsResultCallback {
 
+    private static final String TAG = "HearItMainActivity";
     private final int PERMISSIONS_REQUEST_FOR_CLOUD = 1;
 
     private final int REQ_CODE_SPEECH_RECOG_LOCAL = 100;
@@ -53,19 +56,21 @@ public class MainActivity extends AppCompatActivity
             // We've bound to LocalService, cast the IBinder and get LocalService instance
             SpeechApiService.SpeechApiBinder binder = (SpeechApiService.SpeechApiBinder) service;
             mSpeechApiService = binder.getService();
-            deebug("SpeechApiService connected: " + mSpeechApiService);
+            Log.d("SpeechApiService","onServiceConnected(): " + mSpeechApiService);
         }
 
         @Override
         public void onServiceDisconnected(ComponentName arg0) {
             mSpeechApiService = null;
-            deebug("SpeechApiService disconnected." );
+            Log.d("SpeechApiService","onServiceDisconnected()" );
         }
     };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Log.d(TAG, "onCreate");
+
         setContentView(R.layout.activity_main);
 
         mStatus = (TextView) findViewById(R.id.status);
@@ -89,11 +94,6 @@ public class MainActivity extends AppCompatActivity
                     // longer running if mode is switching to local
                     stopSpeechRecCloud();
                 }
-                /*
-                RadioButton rb = (RadioButton) radioGroup.findViewById(checkedId);
-                if (null != rb && checkedId > -1) {
-                    // Toast.makeText(MainActivity.this, rb.getText(), Toast.LENGTH_SHORT).show();
-                } */
             }
         });
     }
@@ -105,22 +105,44 @@ public class MainActivity extends AppCompatActivity
     @Override
     protected void onStart() {
         super.onStart();
+        Log.d(TAG, "onStart");
         // Prepare Cloud Speech API
         bindService(new Intent(this, SpeechApiService.class),
                 mSpeechApiServiceConnection, BIND_AUTO_CREATE);
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        Log.d(TAG, "onResume");
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        Log.d(TAG, "onPause");
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        Log.d(TAG, "onStop");
+        unbindService(mSpeechApiServiceConnection);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        Log.d(TAG, "onDestroy");
+    }
+
     private void handleOnClick(Button button) {
-        CharSequence buttonText = button.getText();
-        deebug("button text: " + buttonText);
-        if (buttonText.toString().equalsIgnoreCase("start")) {
-            button.setText("Stop");
-            Toast.makeText(getApplicationContext(), "Stop", Toast.LENGTH_SHORT).show();
-            stopSpeechRec();
-        } else {
-            button.setText("Start");
-            Toast.makeText(getApplicationContext(), "Start", Toast.LENGTH_SHORT).show();
+        if (button.getText().toString().equalsIgnoreCase("start")) {
             startSpeechRec();
+            button.setText("Stop");
+        } else {
+            stopSpeechRec();
+            button.setText("Start");
         }
     }
 
@@ -134,7 +156,7 @@ public class MainActivity extends AppCompatActivity
                 startSpeechRecCloud();
                 break;
             default:
-                deebug("unexpected radioButtonId: " + radioButtonID);
+                Log.d(TAG,"unexpected radioButtonId: " + radioButtonID);
                 break;
         }
     }
@@ -146,7 +168,7 @@ public class MainActivity extends AppCompatActivity
                 stopSpeechRecCloud();
                 break;
             default:
-                deebug("unexpected radioButtonId: " + radioButtonID);
+                Log.d(TAG, "unexpected radioButtonId: " + radioButtonID);
                 break;
         }
     }
@@ -160,12 +182,12 @@ public class MainActivity extends AppCompatActivity
                 if (resultCode == RESULT_OK && null != data) {
                     ArrayList<String> result = data
                             .getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
-                    deebug(result.get(0));
+                    Log.d(TAG, result.get(0));
                 }
                 break;
             }
             default:
-                deebug("unexpected request code: " + requestCode);
+                Log.d(TAG, "unexpected request code: " + requestCode);
                 break;
         }
     }
@@ -182,7 +204,7 @@ public class MainActivity extends AppCompatActivity
         try {
             startActivityForResult(intent, REQ_CODE_SPEECH_RECOG_LOCAL);
         } catch (ActivityNotFoundException a) {
-            deebug(a.toString());
+            Log.d(TAG, a.toString());
         }
     }
 
@@ -199,12 +221,13 @@ public class MainActivity extends AppCompatActivity
         if (mVoiceRecorder != null) {
             mVoiceRecorder.stop();
         }
-        mVoiceRecorder = new VoiceRecorder(mVoiceCallback);
-        mVoiceRecorder.start();
+        mVoiceRecorder = new VoiceRecorder();
+        mVoiceRecorder.start(mVoiceCallback);
     }
 
 
     private void stopSpeechRecCloud() {
+        Log.d(TAG, "stopSpeechRecCloud: " + mVoiceRecorder);
         if (mVoiceRecorder != null) {
             mVoiceRecorder.stop();
             mVoiceRecorder = null;
@@ -218,20 +241,20 @@ public class MainActivity extends AppCompatActivity
     //
     private final VoiceRecorder.Callback mVoiceCallback = new VoiceRecorder.Callback() {
         @Override
-        public void onVoiceStart() {
-            deebug("onVoiceStart");
+        public void onVoiceStart(int sampleRate) {
+            Log.d(TAG, "VoiceRecorder.onVoiceStart(): " + (Looper.myLooper() == Looper.getMainLooper()));
             if (mSpeechApiService == null) {
-                deebug("mSpeechApiService is null onVoiceStart");
+                Log.d(TAG, "mSpeechApiService is null onVoiceStart");
                 return;
             }
-            mSpeechApiService.startRecognizing(mVoiceRecorder.getSampleRate());
+            mSpeechApiService.startRecognizing(sampleRate);
         }
 
         @Override
         public void onVoice(byte[] data, int size) {
-            deebug("onVoice");
+            // Log.d(TAG,"VoiceRecorder.onVoice(): " + (Looper.myLooper() == Looper.getMainLooper()));
             if (mSpeechApiService == null) {
-                deebug("mSpeechApiService is null onVoice");
+                Log.d(TAG, "mSpeechApiService is null onVoice");
                 return;
             }
             mSpeechApiService.recognize(data, size);
@@ -239,17 +262,18 @@ public class MainActivity extends AppCompatActivity
 
         @Override
         public void onVoiceEnd() {
-            deebug("onVoiceEnd");
+            Log.d(TAG,"VoiceRecorder.onVoiceEnd(): " + (Looper.myLooper() == Looper.getMainLooper()));
             if (mSpeechApiService != null) {
-                deebug("mSpeechApiService is null onVoiceEnd");
+                Log.d(TAG,"mSpeechApiService is null onVoiceEnd");
                 return;
             }
             mSpeechApiService.finishRecognizing();
         }
 
         @Override
-        public void onStatusUpdate(String msg) {
-            showStatus(msg);
+        public void deebug(String msg) {
+            Log.d(TAG,"VoiceRecorder.deebug(): " + msg + ", " + (Looper.myLooper() == Looper.getMainLooper()));
+            //showStatus(msg);
         }
     };
 
@@ -278,9 +302,13 @@ public class MainActivity extends AppCompatActivity
             }
             msg += p;
         }
-        Log.d("deebug", "requesting permission for " + msg);
+        Log.d(TAG, "requesting permission for " + msg);
+        String[] p2 = new String[permissionsMissing.size()];
+        for(int i = 0; i < permissionsMissing.size(); i++) {
+            p2[i] = permissionsMissing.get(i);
+        }
         ActivityCompat.requestPermissions(this,
-                (String[]) permissionsMissing.toArray(),
+                p2,
                 requestCode);
         return false;
     }
@@ -307,10 +335,5 @@ public class MainActivity extends AppCompatActivity
                 mStatus.setText(msg);
             }
         });
-    }
-
-    private void deebug(final CharSequence msg) {
-        Log.d("deebug", msg.toString());
-//        Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_SHORT).show();
     }
 }
