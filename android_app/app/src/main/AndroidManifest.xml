@@ -17,11 +17,6 @@
             </intent-filter>
         </activity>
 
-        <receiver android:name=".PhoneStateReceiver">
-            <intent-filter>
-                <action android:name="android.intent.action.PHONE_STATE" />
-            </intent-filter>
-        </receiver>
         <service
             android:name=".SpeechApiService" android:exported="false"/>
     </application>
