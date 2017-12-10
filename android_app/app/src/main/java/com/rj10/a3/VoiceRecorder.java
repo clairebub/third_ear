@@ -15,13 +15,6 @@ import android.util.Log;
  */
 
 public class VoiceRecorder {
-    private static final String TAG = "VoiceRecorder";
-    private static final int[] SAMPLE_RATE_CANDIDATES = new int[]{16000, 11025, 22050, 44100};
-    private static final int CHANNEL = AudioFormat.CHANNEL_IN_MONO;
-    private static final int ENCODING = AudioFormat.ENCODING_PCM_16BIT;
-    private static final int AMPLITUDE_THRESHOLD = 1500;
-    private static final int SPEECH_TIMEOUT_MILLIS = 2000;
-    private static final int MAX_SPEECH_LENGTH_MILLIS = 30 * 1000;
 
     interface Callback {
         /**
@@ -48,6 +41,15 @@ public class VoiceRecorder {
          */
         void deebug(String msg);
     }
+
+
+    private static final String TAG = "VoiceRecorder";
+    private static final int[] SAMPLE_RATE_CANDIDATES = new int[]{16000, 11025, 22050, 44100};
+    private static final int CHANNEL = AudioFormat.CHANNEL_IN_MONO;
+    private static final int ENCODING = AudioFormat.ENCODING_PCM_16BIT;
+    private static final int AMPLITUDE_THRESHOLD = 1500;
+    private static final int SPEECH_TIMEOUT_MILLIS = 2000;
+    private static final int MAX_SPEECH_LENGTH_MILLIS = 30 * 1000;
 
     private Thread mThread;
 

@@ -14,6 +14,7 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.util.Log;
 import android.util.TimingLogger;
 import android.view.View;
@@ -56,6 +57,7 @@ public class MainActivity extends AppCompatActivity
             // We've bound to LocalService, cast the IBinder and get LocalService instance
             SpeechApiService.SpeechApiBinder binder = (SpeechApiService.SpeechApiBinder) service;
             mSpeechApiService = binder.getService();
+            mSpeechApiService.setCallback(mSpeechApiServiceCallback);
             Log.d("SpeechApiService","onServiceConnected(): " + mSpeechApiService);
         }
 
@@ -233,6 +235,24 @@ public class MainActivity extends AppCompatActivity
             mVoiceRecorder = null;
         }
     }
+
+    private final SpeechApiService.Callback mSpeechApiServiceCallback =
+            new SpeechApiService.Callback() {
+        @Override
+        public void onSpeechRecognized(final String text, boolean isFinal) {
+            if (isFinal) {
+                // TODO:
+            }
+            if (text != null && !TextUtils.isEmpty(text)) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        mStatus.setText(text);
+                    }
+                });
+            }
+        }
+    };
 
     //
     // Callback from voice recorder to handle start/ongoing/end of voice input.

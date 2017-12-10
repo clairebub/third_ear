@@ -61,6 +61,18 @@ import io.grpc.stub.StreamObserver;
 
 public class SpeechApiService extends Service {
 
+    public interface Callback {
+
+        /**
+         * Called when a new piece of text was recognized by the Speech API.
+         *
+         * @param text    The text.
+         * @param isFinal {@code true} when the API finished processing audio.
+         */
+        void onSpeechRecognized(String text, boolean isFinal);
+
+    }
+
     private static final String TAG = "SpeechApiService";
 
     public static final List<String> SCOPE =
@@ -75,6 +87,7 @@ public class SpeechApiService extends Service {
     // We refresh the current access token before it expires.
     private static final int ACCESS_TOKEN_FETCH_MARGIN = 60 * 1000; // one minute
 
+    private Callback mCallback;
     private final IBinder mBinder = new SpeechApiBinder();
     private SpeechGrpc.SpeechStub mApi;
     private StreamObserver<StreamingRecognizeRequest> mRequestObserver;
@@ -93,12 +106,9 @@ public class SpeechApiService extends Service {
                     Log.w(TAG, "recognition result: " + text);
                 }
             }
-            /* TODO: plug in the listener
             if (text != null) {
-                for (Listener listener : mListeners) {
-                    listener.onSpeechRecognized(text, isFinal);
-                }
-            } */
+                mCallback.onSpeechRecognized(text, isFinal);
+            }
         }
 
         @Override
@@ -114,6 +124,10 @@ public class SpeechApiService extends Service {
     };
     // A handler to ensure the api connection stay alive, it actually runs on main UI thread
     private Handler mHandler;
+
+    public void setCallback(Callback callback) {
+        mCallback = callback;
+    }
 
     @Override
     public void onCreate() {
