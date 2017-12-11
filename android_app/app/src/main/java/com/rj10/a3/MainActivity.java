@@ -115,8 +115,6 @@ public class MainActivity extends AppCompatActivity
         mRecogTextListView.setAdapter(mRecogTextAdapter);
 
         mRecogTextList.add(new RecognizedText("ready for speech recognition...", new Date()));
-        mRecogTextList.add(new RecognizedText("text 2...", new Date()));
-        mRecogTextList.add(new RecognizedText("text 3...", new Date()));
         mRecogTextAdapter.notifyDataSetChanged();
     }
 
@@ -259,7 +257,7 @@ public class MainActivity extends AppCompatActivity
     private final SpeechApiService.Callback mSpeechApiServiceCallback =
             new SpeechApiService.Callback() {
         @Override
-        public void onSpeechRecognized(final String text, boolean isFinal) {
+        public void onSpeechRecognized(final String text, final boolean isFinal) {
             if (isFinal) {
                 // TODO:
             }
@@ -267,9 +265,12 @@ public class MainActivity extends AppCompatActivity
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        mRecogTextList.add(new RecognizedText(text, new Date()));
-                        Log.d(TAG, "got text: " + text);
-                        mRecogTextAdapter.notifyDataSetChanged();
+                        //if(isFinal) {
+                            mRecogTextList.add(new RecognizedText(text, new Date()));
+                            Log.d(TAG, "isFinal=" + isFinal + ", got text: " + text);
+                            mRecogTextAdapter.notifyDataSetChanged();
+                        //}
+                        mRecogTextListView.scrollToPosition(mRecogTextList.size()-1);
                     }
                 });
             }
