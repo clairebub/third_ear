@@ -14,6 +14,9 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.widget.DefaultItemAnimator;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.text.TextUtils;
 import android.util.Log;
 import android.util.TimingLogger;
@@ -24,6 +27,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
@@ -42,8 +46,11 @@ public class MainActivity extends AppCompatActivity
 
     private final int REQ_CODE_SPEECH_RECOG_LOCAL = 100;
 
-    TextView mStatus;
-    RadioGroup mRadioGroup;
+    private TextView mStatus;
+    private RadioGroup mRadioGroup;
+    private RecyclerView mRecogTextListView;
+    private List<RecognizedText> mRecogTextList = new ArrayList<>();
+    private RecognizedTextsAdapter mRecogTextAdapter;
 
     private VoiceRecorder mVoiceRecorder;
     private SpeechApiService mSpeechApiService;
@@ -98,6 +105,19 @@ public class MainActivity extends AppCompatActivity
                 }
             }
         });
+
+        mRecogTextListView = (RecyclerView) findViewById(R.id.recog_texts);
+        mRecogTextAdapter = new RecognizedTextsAdapter(mRecogTextList);
+        RecyclerView.LayoutManager mLayoutManager = new LinearLayoutManager(getApplicationContext());
+        ((LinearLayoutManager) mLayoutManager).setStackFromEnd(true);
+        mRecogTextListView.setLayoutManager(mLayoutManager);
+        mRecogTextListView.setItemAnimator(new DefaultItemAnimator());
+        mRecogTextListView.setAdapter(mRecogTextAdapter);
+
+        mRecogTextList.add(new RecognizedText("ready for speech recognition...", new Date()));
+        mRecogTextList.add(new RecognizedText("text 2...", new Date()));
+        mRecogTextList.add(new RecognizedText("text 3...", new Date()));
+        mRecogTextAdapter.notifyDataSetChanged();
     }
 
     /**
@@ -247,7 +267,9 @@ public class MainActivity extends AppCompatActivity
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        mStatus.setText(text);
+                        mRecogTextList.add(new RecognizedText(text, new Date()));
+                        Log.d(TAG, "got text: " + text);
+                        mRecogTextAdapter.notifyDataSetChanged();
                     }
                 });
             }
