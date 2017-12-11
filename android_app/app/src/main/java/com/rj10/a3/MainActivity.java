@@ -77,7 +77,7 @@ public class MainActivity extends AppCompatActivity
 
         mStatus = (TextView) findViewById(R.id.status);
         mStatus.setHint("Version: 0.1c");
-        Button onOffButton = (Button) findViewById(R.id.buttonOn);
+        Button onOffButton = (Button) findViewById(R.id.start);
         onOffButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -87,11 +87,11 @@ public class MainActivity extends AppCompatActivity
         });
 
         mRadioGroup = (RadioGroup) findViewById(R.id.radioGroup);
-        mRadioGroup.check(R.id.radioButton_cloud);
+        mRadioGroup.check(R.id.mode_streaming);
         mRadioGroup.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(RadioGroup radioGroup, int checkedId) {
-                if (checkedId == R.id.radioButton_local) {
+                if (checkedId == R.id.mode_local) {
                     // cloud recognition runs in the background. need to make sure it is no
                     // longer running if mode is switching to local
                     stopSpeechRecCloud();
@@ -151,10 +151,10 @@ public class MainActivity extends AppCompatActivity
     private void startSpeechRec() {
         int radioButtonID = mRadioGroup.getCheckedRadioButtonId();
         switch (radioButtonID) {
-            case R.id.radioButton_local:
+            case R.id.mode_local:
                 startSpeechRecLocal();
                 break;
-            case R.id.radioButton_cloud:
+            case R.id.mode_streaming:
                 startSpeechRecCloud();
                 break;
             default:
@@ -166,7 +166,7 @@ public class MainActivity extends AppCompatActivity
     private void stopSpeechRec() {
         int radioButtonID = mRadioGroup.getCheckedRadioButtonId();
         switch (radioButtonID) {
-            case R.id.radioButton_cloud:
+            case R.id.mode_streaming:
                 stopSpeechRecCloud();
                 break;
             default:
