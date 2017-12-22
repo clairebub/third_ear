@@ -38,7 +38,7 @@ local.properties
 obj/
 
 ##########################################
-# grade
+# gradle
 ##########################################
 .gradle
 /build/
@@ -54,3 +54,8 @@ gradle-app.setting
 
 # # Work around https://youtrack.jetbrains.com/issue/IDEA-116898
 # gradle/wrapper/gradle-wrapper.properties
+
+################################
+# Python
+################################
+__pycache__/
