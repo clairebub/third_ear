@@ -23,7 +23,7 @@ from dnn_data_processing import extract_feature
 # float hyperparameters
 tf.app.flags.DEFINE_float("learning_rate", 0.01, "Learning rate.")
 tf.app.flags.DEFINE_integer("batch_size", 1024, "Batch size to use during training.")
-tf.app.flags.DEFINE_integer("num_of_epochs", 50, "Number of epochs during training.")
+tf.app.flags.DEFINE_integer("num_of_epochs", 30, "Number of epochs during training.")
 tf.app.flags.DEFINE_integer("n_hidden_units_one", 320, "Hidden layer one size.")
 tf.app.flags.DEFINE_integer("n_hidden_units_two", 320, "Hidden layer two size.")
 # string hyperparameters
@@ -101,12 +101,15 @@ class DNNModeling(object):
                     batch_y = train_y_shuffled[offset:(offset + FLAGS.batch_size), :]
                     _, cost = sess.run([optimizer, loss_op], feed_dict={self.X: batch_x, self.Y: batch_y})
                     cost_history = np.append(cost_history, cost)
-                #saver.save(sess, "%s/c2/%s_%s_model.ckpt" % (os.getcwd(), now, FLAGS.model))
+                accuracy_at_epoch = sess.run(accuracy, feed_dict={self.X: test_x, self.Y: test_y})
+                print("done epoch %d, loss=%.3f, accuracy=%.3f" % (epoch, cost_history[-1], accuracy_at_epoch))
                 save_path = saver.save(sess, "/tmp/urban_sound_ckpt", global_step=epoch)
-                print("done epoch %d, cost=%f" % (epoch, cost_history[-1]))
                 print("saved ckpt file %s" % save_path)
             print("done training")
 
+    def inference(self):
+        pass
+        
     def _shuffle_trainset(self, train_x, train_y):
         train_x_shuffled, train_y_shuffled = [], []
         idx = list(range(train_x.shape[0]))
