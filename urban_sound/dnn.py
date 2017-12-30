@@ -108,8 +108,11 @@ class DNNModeling(object):
             print("done training")
 
     def inference(self):
-        pass
+        # load the saved model
+        # extract the features
         
+        pass
+
     def _shuffle_trainset(self, train_x, train_y):
         train_x_shuffled, train_y_shuffled = [], []
         idx = list(range(train_x.shape[0]))
