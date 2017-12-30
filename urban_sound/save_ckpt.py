@@ -1,4 +1,5 @@
 import tensorflow as tf
+import time
 
 # Create some variables.
 v1 = tf.get_variable("v1", shape=[3], initializer = tf.zeros_initializer)
@@ -24,3 +25,4 @@ with tf.Session() as sess:
       dec_v2.op.run()
       save_path = saver.save(sess, "/tmp/try-save/train", global_step=step)
       print("Model saved in file: %s" % save_path)
+      time.sleep(10)

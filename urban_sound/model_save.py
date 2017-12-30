@@ -10,7 +10,7 @@ saver = tf.train.Saver()
 
 with tf.Session() as sess:
   # save the graph
-  tf.train.write_graph(sess.graph_def, '/tmp/tfdriod/', 'tfdroid.pbtxt')
+  tf.train.write_graph(sess.graph_def, '/tmp/tf_training/model/', 'rjmodel.pbtxt')
   sess.run(init_op)
 
   # normally you would do some training here
@@ -19,4 +19,4 @@ with tf.Session() as sess:
   sess.run(tf.assign(b, [1,1]))
 
   #save a checkpoint file, which will store the above assignment
-  saver.save(sess, '/tmp/tfdriod/tfdroid.ckpt')
+  saver.save(sess, '/tmp/tf_training/ckpt/rjmodel.ckpt')
