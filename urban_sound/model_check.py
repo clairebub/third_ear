@@ -9,7 +9,7 @@ def main():
     meta_graph.read_meta_graph_file("/tmp/tf_training/ckpt/rjmodel.ckpt.meta")
     g = tf.MetaGraphDef()
     g.ParseFromString(open("/tmp/tf_training/ckpt/rjmodel.ckpt.meta", "rb").read())
-    print("GraphDef from meta_graph_file:", g.graph_def)
+    #print("GraphDef from meta_graph_file:", g.graph_def)
     g = tf.GraphDef()
     g.ParseFromString(open("/tmp/stylize_quantized.pb", "rb").read())
     print("GraphDef: ", g)
