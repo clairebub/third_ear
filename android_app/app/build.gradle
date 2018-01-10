@@ -21,6 +21,7 @@ android {
             abortOnError false
         }
     }
+    sourceSets { main { assets.srcDirs = ['src/main/assets', 'src/main/assets/'] } }
 }
 
 protobuf {
