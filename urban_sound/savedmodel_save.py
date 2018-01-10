@@ -16,6 +16,7 @@ with tf.Session() as sess:
   sess.run(tf.assign(W, [[1, 2],[4,5],[7,8]]))
   sess.run(tf.assign(b, [1,1]))
 
+  file_writer = tf.summary.FileWriter('/tmp/tf_logs', sess.graph)
   builder.add_meta_graph_and_variables(sess,
                                        [tf.saved_model.tag_constants.TRAINING],
                                        signature_def_map=None,

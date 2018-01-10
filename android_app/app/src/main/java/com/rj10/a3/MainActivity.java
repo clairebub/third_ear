@@ -6,6 +6,7 @@ import android.content.ComponentName;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
+import android.media.MediaPlayer;
 import android.os.IBinder;
 import android.os.Looper;
 import android.speech.RecognizerIntent;
@@ -41,7 +42,7 @@ import java.util.Locale;
 public class MainActivity extends AppCompatActivity
         implements ActivityCompat.OnRequestPermissionsResultCallback {
 
-    private static final String TAG = "HearItMainActivity";
+    private static final String TAG = "3rdEarMainActivity";
     private final int PERMISSIONS_REQUEST_FOR_CLOUD = 1;
 
     private final int REQ_CODE_SPEECH_RECOG_LOCAL = 100;
@@ -101,7 +102,7 @@ public class MainActivity extends AppCompatActivity
                 if (checkedId == R.id.mode_local) {
                     // cloud recognition runs in the background. need to make sure it is no
                     // longer running if mode is switching to local
-                    stopSpeechRecCloud();
+                    stopSpeechRecStreaming();
                 }
             }
         });
@@ -158,6 +159,7 @@ public class MainActivity extends AppCompatActivity
 
     private void handleOnClick(Button button) {
         if (button.getText().toString().equalsIgnoreCase("start")) {
+            playWavFile();
             startSpeechRec();
             button.setText("Stop");
         } else {
@@ -173,10 +175,12 @@ public class MainActivity extends AppCompatActivity
                 startSpeechRecLocal();
                 break;
             case R.id.mode_streaming:
-                startSpeechRecCloud();
+                startSpeechRecStreaming();
                 break;
             default:
-                Log.d(TAG,"unexpected radioButtonId: " + radioButtonID);
+                String msg = "unexpected radioButtonId: " + radioButtonID;
+                Log.d(TAG, msg);
+                mStatus.setText(msg);
                 break;
         }
     }
@@ -185,10 +189,15 @@ public class MainActivity extends AppCompatActivity
         int radioButtonID = mRadioGroup.getCheckedRadioButtonId();
         switch (radioButtonID) {
             case R.id.mode_streaming:
-                stopSpeechRecCloud();
+                stopSpeechRecStreaming();
+                break;
+            case R.id.mode_local:
+                // nothing to do for local mode
                 break;
             default:
-                Log.d(TAG, "unexpected radioButtonId: " + radioButtonID);
+                String msg = "unexpected radioButtonId: " + radioButtonID;
+                Log.d(TAG, msg);
+                mStatus.setText(msg);
                 break;
         }
     }
@@ -202,7 +211,10 @@ public class MainActivity extends AppCompatActivity
                 if (resultCode == RESULT_OK && null != data) {
                     ArrayList<String> result = data
                             .getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
-                    Log.d(TAG, result.get(0));
+                    String recogText = result.get(0);
+                    Log.d(TAG, recogText);
+                    mRecogTextList.add(new RecognizedText(recogText, new Date()));
+                    mRecogTextAdapter.notifyDataSetChanged();
                 }
                 break;
             }
@@ -228,7 +240,7 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-    private void startSpeechRecCloud() {
+    private void startSpeechRecStreaming() {
         String[] permissions = new String[] {
                 Manifest.permission.INTERNET,
                 Manifest.permission.RECORD_AUDIO,
@@ -246,8 +258,8 @@ public class MainActivity extends AppCompatActivity
     }
 
 
-    private void stopSpeechRecCloud() {
-        Log.d(TAG, "stopSpeechRecCloud: " + mVoiceRecorder);
+    private void stopSpeechRecStreaming() {
+        Log.d(TAG, "stopSpeechRecStreaming: " + mVoiceRecorder);
         if (mVoiceRecorder != null) {
             mVoiceRecorder.stop();
             mVoiceRecorder = null;
@@ -378,5 +390,10 @@ public class MainActivity extends AppCompatActivity
                 mStatus.setText(msg);
             }
         });
+    }
+
+    private void playWavFile() {
+        MediaPlayer mediaPlayer = MediaPlayer.create(getApplicationContext(), R.raw.applause_y);
+        mediaPlayer.start();
     }
 }
