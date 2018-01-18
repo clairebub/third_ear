@@ -27,6 +27,8 @@ import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -159,7 +161,7 @@ public class MainActivity extends AppCompatActivity
 
     private void handleOnClick(Button button) {
         if (button.getText().toString().equalsIgnoreCase("start")) {
-            playWavFile();
+            // playWavFile();
             startSpeechRec();
             button.setText("Stop");
         } else {
@@ -295,8 +297,10 @@ public class MainActivity extends AppCompatActivity
     // The callbacks of onVoice() are called from a separate thread.
     //
     private final VoiceRecorder.Callback mVoiceCallback = new VoiceRecorder.Callback() {
+        private int mSampleRate = -1;
         @Override
         public void onVoiceStart(int sampleRate) {
+            mSampleRate = sampleRate;
             Log.d(TAG, "VoiceRecorder.onVoiceStart(): " + (Looper.myLooper() == Looper.getMainLooper()));
             if (mSpeechApiService == null) {
                 Log.d(TAG, "mSpeechApiService is null onVoiceStart");
@@ -312,7 +316,33 @@ public class MainActivity extends AppCompatActivity
                 Log.d(TAG, "mSpeechApiService is null onVoice");
                 return;
             }
-            mSpeechApiService.recognize(data, size);
+            if (mSampleRate < 0) {
+                Log.e(TAG, "sampleRate is -1 when onVoice");
+                return;
+            }
+            // get the frames from the audio buffer
+            double[][] frames = getAudioFrames(data, size);
+
+            int nnumberofFilters = 24;
+            int nlifteringCoefficient = 22;
+            boolean oisLifteringEnabled = true;
+            boolean oisZeroThCepstralCoefficientCalculated = true;
+            int nnumberOfMFCCParameters = 12; //without considering 0-th
+            double dsamplingFrequency = 8000.0;
+            int nFFTLength = 512;
+
+            MFCC mfcc = new MFCC(nnumberOfMFCCParameters,
+                    dsamplingFrequency,
+                    nnumberofFilters,
+                    nFFTLength,
+                    oisLifteringEnabled,
+                    nlifteringCoefficient,
+                    oisZeroThCepstralCoefficientCalculated);
+            for (int i = 0; i < frames.length; i++) {
+                double[] mfccFeatures = mfcc.getParameters(frames[i]);
+                Log.d(TAG, String.format("mfcc feature length: " + mfccFeatures.length));
+            }
+           // mSpeechApiService.recognize(data, size);
         }
 
         @Override
@@ -329,6 +359,54 @@ public class MainActivity extends AppCompatActivity
         public void deebug(String msg) {
             Log.d(TAG,"VoiceRecorder.deebug(): " + msg + ", " + (Looper.myLooper() == Looper.getMainLooper()));
             //showStatus(msg);
+        }
+
+        private double[][] getAudioFrames(byte[] data, int size) {
+            int totalSamples = size / 2;
+            int frameDuration = 40; // 40 ms
+            int samplesPerFrame = (int) (mSampleRate / 1000 * frameDuration);
+            int stride_length = samplesPerFrame / 4;
+            int totalFrames = totalSamples / samplesPerFrame;
+            Log.d(TAG, String.format("total frames=%d, samplesPerFrame=%d, stride_length=%d", totalFrames, samplesPerFrame, stride_length));
+
+            ByteBuffer byteBuffer = ByteBuffer.wrap(data, 0, size);
+            if (ByteOrder.nativeOrder().equals(ByteOrder.BIG_ENDIAN)) {
+                byteBuffer.order(ByteOrder.BIG_ENDIAN); // assume it's little endian
+                Log.d(TAG, "big endian");
+            } else {
+                byteBuffer.order(ByteOrder.LITTLE_ENDIAN); // assume it's little endian
+                Log.d(TAG, "little endian");
+            }
+
+            double[] pcmValues = new double[totalSamples];
+            int count[] = new int[100];
+            for (int i = 0; i < totalSamples; i++) {
+                pcmValues[i] = 1.0 * byteBuffer.getInt(i) / Integer.MAX_VALUE;
+                int x = (int) (100 * (pcmValues[i] + 1)/2.0) - 1;
+                if (x < 0) {
+                    x = 0;
+                }
+                count[x] += 1;
+            }
+            String s = "";
+            for (int i = 0; i < 100; i++) {
+                s += ", " + count[i];
+            }
+            Log.d(TAG, String.format("count=%s", s));
+
+            double[][] frames = new double[totalFrames][samplesPerFrame];
+            for (int i = 0; i < totalFrames; i++) {
+                int offset = i * samplesPerFrame;
+                for (int j = 0; j < samplesPerFrame; j++) {
+                    int x = offset + j;
+                    if (x >= totalSamples) {
+                        frames[i][j] = 0;
+                    } else {
+                        frames[i][j] = pcmValues[x];
+                    }
+                }
+            }
+            return frames;
         }
     };
 

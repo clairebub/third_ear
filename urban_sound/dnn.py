@@ -88,9 +88,10 @@ class DNNModeling(object):
         test_x = self.data['features'][~rnd_indices]
         test_y = self.data['labels'][~rnd_indices]
 
-        saver = tf.train.Saver()
+        # saver = tf.train.Saver()
+        builder = tf.saved_model.builder.SavedModelBuilder('/tmp/stem/model')
         with tf.Session() as sess:
-            tf.train.write_graph(sess.graph_def, '/tmp/urban-sound', 'model.pbtxt')
+            tf.train.write_graph(sess.graph_def, '/tmp/stem/model', 'model.pbtxt')
             sess.run(tf.global_variables_initializer())
             for epoch in range(FLAGS.num_of_epochs):
                 train_x_shuffled, train_y_shuffled = self._shuffle_trainset(train_x, train_y)
@@ -103,14 +104,17 @@ class DNNModeling(object):
                     cost_history = np.append(cost_history, cost)
                 accuracy_at_epoch = sess.run(accuracy, feed_dict={self.X: test_x, self.Y: test_y})
                 print("done epoch %d, loss=%.3f, accuracy=%.3f" % (epoch, cost_history[-1], accuracy_at_epoch))
-                save_path = saver.save(sess, "/tmp/urban_sound_ckpt", global_step=epoch)
-                print("saved ckpt file %s" % save_path)
+                #save_path = saver.save(sess, "/tmp/urban_sound_ckpt", global_step=epoch)
+                #print("saved ckpt file %s" % save_path)
             print("done training")
-
+            builder.add_meta_graph_and_variables(sess,
+                                       [tf.saved_model.tag_constants.TRAINING],
+                                       signature_def_map=None,
+                                       assets_collection=None)
     def inference(self):
         # load the saved model
         # extract the features
-        
+
         pass
 
     def _shuffle_trainset(self, train_x, train_y):
