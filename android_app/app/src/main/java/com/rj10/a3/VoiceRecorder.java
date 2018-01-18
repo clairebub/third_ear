@@ -44,7 +44,8 @@ public class VoiceRecorder {
 
 
     private static final String TAG = "VoiceRecorder";
-    private static final int[] SAMPLE_RATE_CANDIDATES = new int[]{16000, 11025, 22050, 44100};
+    // private static final int[] SAMPLE_RATE_CANDIDATES = new int[]{16000, 11025, 22050, 44100};
+    private static final int[] SAMPLE_RATE_CANDIDATES = new int[]{ 22050, 44100};
     private static final int CHANNEL = AudioFormat.CHANNEL_IN_MONO;
     private static final int ENCODING = AudioFormat.ENCODING_PCM_16BIT;
     private static final int AMPLITUDE_THRESHOLD = 1500;
@@ -125,9 +126,13 @@ public class VoiceRecorder {
          */
         private AudioRecord createAudioRecord() {
             for (int sampleRate : SAMPLE_RATE_CANDIDATES) {
-                final int sizeInBytes = AudioRecord.getMinBufferSize(sampleRate, CHANNEL, ENCODING);
-                if (sizeInBytes == AudioRecord.ERROR_BAD_VALUE) {
+                final int minSizeInBytes = AudioRecord.getMinBufferSize(sampleRate, CHANNEL, ENCODING);
+                if (minSizeInBytes == AudioRecord.ERROR_BAD_VALUE) {
                     continue;
+                }
+                int sizeInBytes = 1 * sampleRate * 2; // buffer should at least hold one seconds of samples
+                if (sizeInBytes < minSizeInBytes) {
+                    sizeInBytes = minSizeInBytes;
                 }
                 final AudioRecord audioRecord = new AudioRecord(MediaRecorder.AudioSource.MIC,
                         sampleRate, CHANNEL, ENCODING, sizeInBytes);
