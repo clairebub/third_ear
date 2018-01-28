@@ -50,28 +50,25 @@ protobuf {
 }
 
 dependencies {
-    compile fileTree(dir: 'libs', include: ['*.jar'])
-
+    compile fileTree(include: ['*.jar'], dir: 'libs')
     // Support libraries
     compile 'com.android.support:appcompat-v7:26.1.0'
     compile 'com.android.support.constraint:constraint-layout:1.+'
     compile 'com.android.support:recyclerview-v7:26.+'
-
     // gRPC
     compile "io.grpc:grpc-okhttp:$grpcVersion"
     compile "io.grpc:grpc-protobuf-lite:$grpcVersion"
     compile "io.grpc:grpc-stub:$grpcVersion"
     compile 'javax.annotation:javax.annotation-api:1.2'
     protobuf 'com.google.protobuf:protobuf-java:3.3.1'
-
     // OAuth2 for Google API
     compile('com.google.auth:google-auth-library-oauth2-http:0.7.0') {
         exclude module: 'httpclient'
     }
-
     // Tests
     testCompile 'junit:junit:4.12'
     // androidTestCompile 'com.android.support.test:runner:0.5'
     // androidTestCompile 'com.android.support.test.espresso:espresso-core:2.2.2'
+    compile files('libs/TarsosDSP-Android-2.0.jar')
 }
 
