@@ -11,15 +11,11 @@ apply plugin: 'application'
 
 repositories {
     jcenter()
-
-    flatDir {
-      dirs 'libs'
-    }
 }
 
 dependencies {
+    compile fileTree(dir: 'libs', include: ['*.jar'])
     compile 'com.google.guava:guava:23.0'
-    compile name: 'TarsosDSP-latest'
     testCompile 'junit:junit:4.12'
 }
 
