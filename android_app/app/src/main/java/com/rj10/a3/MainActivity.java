@@ -20,7 +20,6 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.text.TextUtils;
 import android.util.Log;
-import android.util.TimingLogger;
 import android.view.View;
 import android.widget.Button;
 import android.widget.RadioGroup;
@@ -63,7 +62,7 @@ public class MainActivity extends AppCompatActivity
     private List<RecognizedText> mRecogTextList = new ArrayList<>();
     private RecognizedTextsAdapter mRecogTextAdapter;
 
-    private VoiceRecorder mVoiceRecorder;
+    private SoundRecorder mVoiceRecorder;
     private SpeechApiService mSpeechApiService;
     int mRequestCount = 0;
 
@@ -252,9 +251,9 @@ public class MainActivity extends AppCompatActivity
 
     private void startSpeechRecStreaming() {
         String[] permissions = new String[] {
-                Manifest.permission.INTERNET,
                 Manifest.permission.RECORD_AUDIO,
-                Manifest.permission.READ_PHONE_STATE
+                Manifest.permission.READ_PHONE_STATE,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
         };
         if (!checkPermissions(permissions, PERMISSIONS_REQUEST_FOR_CLOUD)) {
             return;
@@ -263,7 +262,7 @@ public class MainActivity extends AppCompatActivity
         if (mVoiceRecorder != null) {
             mVoiceRecorder.stop();
         }
-        mVoiceRecorder = new VoiceRecorder();
+        mVoiceRecorder = new SoundRecorder();
         mVoiceRecorder.start(mVoiceCallback);
     }
 
@@ -304,12 +303,12 @@ public class MainActivity extends AppCompatActivity
     // For cloud based speech recog streaming Api only.
     // The callbacks of onVoice() are called from a separate thread.
     //
-    private final VoiceRecorder.Callback mVoiceCallback = new VoiceRecorder.Callback() {
+    private final SoundRecorder.Callback mVoiceCallback = new SoundRecorder.Callback() {
         private int mSampleRate = -1;
         @Override
         public void onVoiceStart(int sampleRate) {
             mSampleRate = sampleRate;
-            Log.d(TAG, "VoiceRecorder.onVoiceStart(): " + (Looper.myLooper() == Looper.getMainLooper()));
+            Log.d(TAG, "SoundRecorder.onVoiceStart(): " + (Looper.myLooper() == Looper.getMainLooper()));
             if (mSpeechApiService == null) {
                 Log.d(TAG, "mSpeechApiService is null onVoiceStart");
                 return;
@@ -319,7 +318,7 @@ public class MainActivity extends AppCompatActivity
 
         @Override
         public void onVoice(byte[] data, int size) {
-            // Log.d(TAG,"VoiceRecorder.onVoice(): " + (Looper.myLooper() == Looper.getMainLooper()));
+            // Log.d(TAG,"SoundRecorder.onVoice(): " + (Looper.myLooper() == Looper.getMainLooper()));
             if (mSpeechApiService == null) {
                 Log.d(TAG, "mSpeechApiService is null onVoice");
                 return;
@@ -328,6 +327,7 @@ public class MainActivity extends AppCompatActivity
                 Log.e(TAG, "sampleRate is -1 when onVoice");
                 return;
             }
+            /*
             // get the frames from the audio buffer
             double[][] frames = getAudioFrames(data, size);
 
@@ -349,13 +349,13 @@ public class MainActivity extends AppCompatActivity
             for (int i = 0; i < frames.length; i++) {
                 double[] mfccFeatures = mfcc.getParameters(frames[i]);
                 Log.d(TAG, String.format("mfcc feature length: " + mfccFeatures.length));
-            }
+            } */
            // mSpeechApiService.recognize(data, size);
         }
 
         @Override
         public void onVoiceEnd() {
-            Log.d(TAG,"VoiceRecorder.onVoiceEnd(): " + (Looper.myLooper() == Looper.getMainLooper()));
+            Log.d(TAG,"SoundRecorder.onVoiceEnd(): " + (Looper.myLooper() == Looper.getMainLooper()));
             if (mSpeechApiService != null) {
                 Log.d(TAG,"mSpeechApiService is null onVoiceEnd");
                 return;
@@ -365,7 +365,7 @@ public class MainActivity extends AppCompatActivity
 
         @Override
         public void deebug(String msg) {
-            Log.d(TAG,"VoiceRecorder.deebug(): " + msg + ", " + (Looper.myLooper() == Looper.getMainLooper()));
+            Log.d(TAG,"SoundRecorder.deebug(): " + msg + ", " + (Looper.myLooper() == Looper.getMainLooper()));
             //showStatus(msg);
         }
 
