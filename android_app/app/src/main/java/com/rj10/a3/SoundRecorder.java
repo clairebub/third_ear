@@ -1,5 +1,6 @@
 package com.rj10.a3;
 
+import android.os.Environment;
 import android.support.annotation.NonNull;
 
 import android.media.AudioFormat;
@@ -8,13 +9,21 @@ import android.media.MediaRecorder;
 import android.telecom.Call;
 import android.util.Log;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOError;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
 /**
  * An object that utilized the AudioRecord interface to access android's audio records. It used
  * a separate worker thread to continuously poll the AudioRecord's buffer and do something with
  * the audio data.
  */
 
-public class VoiceRecorder {
+public class SoundRecorder {
 
     interface Callback {
         /**
@@ -43,18 +52,17 @@ public class VoiceRecorder {
     }
 
 
-    private static final String TAG = "VoiceRecorder";
-    // private static final int[] SAMPLE_RATE_CANDIDATES = new int[]{16000, 11025, 22050, 44100};
-    private static final int[] SAMPLE_RATE_CANDIDATES = new int[]{ 22050, 44100};
-    private static final int CHANNEL = AudioFormat.CHANNEL_IN_MONO;
-    private static final int ENCODING = AudioFormat.ENCODING_PCM_16BIT;
+    private static final String TAG = "SoundRecorder";
+    private static final int SAMPLE_RATE = 22050;
+    private static final int AUDIO_CHANNEL = AudioFormat.CHANNEL_IN_MONO;
+    private static final int AUDIO_ENCODING = AudioFormat.ENCODING_PCM_16BIT;
     private static final int AMPLITUDE_THRESHOLD = 1500;
     private static final int SPEECH_TIMEOUT_MILLIS = 2000;
     private static final int MAX_SPEECH_LENGTH_MILLIS = 30 * 1000;
 
     private Thread mThread;
 
-    public VoiceRecorder() {}
+    public SoundRecorder() {}
 
     /**
      * Starts recording audio.
@@ -62,7 +70,10 @@ public class VoiceRecorder {
      * <p>The caller is responsible for calling {@link #stop()} later.</p>
      */
     public void start(@NonNull Callback callback) {
-        mThread = new Thread(new VoiceRecorderRunnable(callback));
+        if (mThread != null) {
+            throw new IllegalStateException();
+        }
+        mThread = new Thread(new SoundRecorderRunnable(callback));
         mThread.start();
     }
 
@@ -80,23 +91,24 @@ public class VoiceRecorder {
      * A worker thread that extracts buffer from AudioRecord and invokes the supplied callback for
      * speech recognition.
      */
-    private class VoiceRecorderRunnable implements Runnable {
+    private class SoundRecorderRunnable implements Runnable {
         private final Callback mCallback;
         private AudioRecord mAudioRecord;
         private byte[] mBuffer;
+        private ByteBuffer mAudioBytes;
         /** The timestamp of the last time that voice is heard. */
         private long mLastVoiceHeardMillis = Long.MAX_VALUE;
         /** The timestamp when the current voice is started. */
         private long mVoiceStartedMillis;
 
-        public VoiceRecorderRunnable(Callback callback) {
+        public SoundRecorderRunnable(Callback callback) {
             mCallback = callback;
 
             // Try to create a new recording session.
             mAudioRecord = createAudioRecord();
             if (mAudioRecord == null) {
                 // TODO: show a status on the associated UI so the user knows
-                throw new RuntimeException("Cannot instantiate VoiceRecorder");
+                throw new RuntimeException("Cannot instantiate SoundRecorder");
             }
             // Start recording.
             mAudioRecord.startRecording();
@@ -125,25 +137,34 @@ public class VoiceRecorder {
          * permissions?).
          */
         private AudioRecord createAudioRecord() {
-            for (int sampleRate : SAMPLE_RATE_CANDIDATES) {
-                final int minSizeInBytes = AudioRecord.getMinBufferSize(sampleRate, CHANNEL, ENCODING);
-                if (minSizeInBytes == AudioRecord.ERROR_BAD_VALUE) {
-                    continue;
-                }
-                int sizeInBytes = 1 * sampleRate * 2; // buffer should at least hold one seconds of samples
-                if (sizeInBytes < minSizeInBytes) {
-                    sizeInBytes = minSizeInBytes;
-                }
-                final AudioRecord audioRecord = new AudioRecord(MediaRecorder.AudioSource.MIC,
-                        sampleRate, CHANNEL, ENCODING, sizeInBytes);
-                if (audioRecord.getState() == AudioRecord.STATE_INITIALIZED) {
-                    mBuffer = new byte[sizeInBytes];
-                    return audioRecord;
-                } else {
-                    audioRecord.release();
-                }
+            int minBufferSizeInBytes = getMinBufferSizeInBytes();
+            AudioRecord audioRecord = new AudioRecord(
+                    MediaRecorder.AudioSource.MIC,
+                    SAMPLE_RATE,
+                    AUDIO_CHANNEL, AUDIO_ENCODING,
+                    minBufferSizeInBytes);
+            if (audioRecord.getState() != AudioRecord.STATE_INITIALIZED) {
+                audioRecord.release();
+                throw new IllegalStateException();
             }
-            return null;
+            mBuffer = new byte[minBufferSizeInBytes];
+            // initial capacity to hold 10 seconds of audio
+            mAudioBytes = ByteBuffer.allocate(MAX_SPEECH_LENGTH_MILLIS/1000*SAMPLE_RATE*2);
+            return audioRecord;
+        }
+
+        private int getMinBufferSizeInBytes() {
+            int minBufferSize = AudioRecord.getMinBufferSize(
+                SAMPLE_RATE,
+                AudioFormat.CHANNEL_IN_MONO,
+                AudioFormat.ENCODING_PCM_16BIT);
+            Log.d(TAG, "AudioRecord.getMinBufferSize() returns " + minBufferSize);
+            // make sure minBufferSize can contain at least 1 second of audio (16 bits sample).
+            if (minBufferSize < SAMPLE_RATE * 2) {
+                minBufferSize = SAMPLE_RATE * 2;
+                Log.d(TAG, "minBufferSize increased to store 1 sec of audio: " + minBufferSize);
+            }
+            return minBufferSize;
         }
 
         @Override
@@ -151,7 +172,6 @@ public class VoiceRecorder {
             while (true) {
                 if (Thread.currentThread().isInterrupted()) {
                     Log.d(TAG, "ProcessVoiceRunnable thread interrupted: " + Thread.currentThread());
-                    dismiss();
                     break;
                 }
                 final int size = mAudioRecord.read(mBuffer, 0, mBuffer.length);
@@ -168,21 +188,73 @@ public class VoiceRecorder {
                     mCallback.onVoice(mBuffer, size);
                     mLastVoiceHeardMillis = now;
                     if (now - mVoiceStartedMillis > MAX_SPEECH_LENGTH_MILLIS) {
+                        Log.d(TAG, "recording sound over max length: " + MAX_SPEECH_LENGTH_MILLIS);
                         end();
+                        break;
                     }
+                    if (mAudioBytes.remaining() <= 0) {
+                        Log.d(TAG, "AudioBytes full");
+                        end();
+                        break;
+                    }
+                    mAudioBytes.put(mBuffer, 0, size);
                 } else if (mLastVoiceHeardMillis != Long.MAX_VALUE) {
                     mCallback.onVoice(mBuffer, size);
                     if (now - mLastVoiceHeardMillis > SPEECH_TIMEOUT_MILLIS) {
+                        Log.d(TAG, "recording timeout " + SPEECH_TIMEOUT_MILLIS);
                         end();
+                        break;
                     }
                 }
-                //}
             }
+            // write the WAV file
+            try {
+                writeWAVFile();
+            } catch (IOException ex) {
+                Log.e(TAG, ex.toString());
+            }
+            dismiss();
         }
 
         private void end() {
             mLastVoiceHeardMillis = Long.MAX_VALUE;
             mCallback.onVoiceEnd();
+        }
+
+        private void writeWAVFile() throws IOException {
+            int numSamples = mAudioBytes.position() / 2;
+            if (numSamples <= SAMPLE_RATE) {
+                Log.d(TAG, "not enough samples for 1 sec: " + numSamples);
+                return;
+            }
+            String externalRootDir = Environment.getExternalStorageDirectory().getPath();
+            if (!externalRootDir.endsWith("/")) {
+                externalRootDir += "/";
+            }
+            File parentDir = new File(externalRootDir + "third_ear/");
+            parentDir.mkdirs();
+            String fileName =
+                    new SimpleDateFormat("yyyyMMddHHmmss'.wav'").format(new Date());
+            File wavFile = new File(parentDir, fileName);
+            Log.d(TAG, "wav file " + wavFile);
+            FileOutputStream outputStream = new FileOutputStream(wavFile);
+
+            outputStream.write(WAVHeader.getWAVHeader(SAMPLE_RATE, 1, numSamples));
+            Log.d(TAG, "writing WAV file with " + numSamples + " samples");
+
+            mAudioBytes.position(0);
+            int nBytesLeft = numSamples * 2;
+            while (nBytesLeft > 0) {
+                // write the samples to the file, mBuffer length bytes at a time
+                int nBytesRead = mBuffer.length;
+                if (nBytesLeft < mBuffer.length) {
+                    nBytesRead = nBytesLeft;
+                }
+                mAudioBytes.get(mBuffer, 0, nBytesRead);
+                outputStream.write(mBuffer, 0, nBytesRead);
+                nBytesLeft -= nBytesRead;
+            }
+            outputStream.close();
         }
 
         private boolean isHearingVoice(byte[] buffer, int size) {
