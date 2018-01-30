@@ -49,6 +49,8 @@ public class SoundRecorder {
          * @param msg
          */
         void deebug(String msg);
+
+        void setWaveFile(String fileName);
     }
 
 
@@ -100,6 +102,7 @@ public class SoundRecorder {
         private long mLastVoiceHeardMillis = Long.MAX_VALUE;
         /** The timestamp when the current voice is started. */
         private long mVoiceStartedMillis;
+        private String mWaveFileName;
 
         public SoundRecorderRunnable(Callback callback) {
             mCallback = callback;
@@ -115,19 +118,29 @@ public class SoundRecorder {
         }
 
         /**
-         * Dismisses the currently ongoing utterance and releases the resources
+         * end the currently ongoing utterance and releases the resources
          */
-        private void dismiss() {
+        private void end() {
+            try {
+                writeWAVFile();
+            } catch (IOException ex) {
+                Log.e(TAG, ex.toString());
+            }
+
             if (mLastVoiceHeardMillis != Long.MAX_VALUE) {
                 mLastVoiceHeardMillis = Long.MAX_VALUE;
+                // write the WAV file
                 mCallback.onVoiceEnd();
+                mCallback.setWaveFile(mWaveFileName);
             }
             if (mAudioRecord != null) {
                 mAudioRecord.stop();
                 mAudioRecord.release();
                 mAudioRecord = null;
+                mAudioBytes.position(0);
             }
             mBuffer = null;
+            mWaveFileName = null;
         }
 
         /**
@@ -189,12 +202,10 @@ public class SoundRecorder {
                     mLastVoiceHeardMillis = now;
                     if (now - mVoiceStartedMillis > MAX_SPEECH_LENGTH_MILLIS) {
                         Log.d(TAG, "recording sound over max length: " + MAX_SPEECH_LENGTH_MILLIS);
-                        end();
                         break;
                     }
                     if (mAudioBytes.remaining() <= 0) {
                         Log.d(TAG, "AudioBytes full");
-                        end();
                         break;
                     }
                     mAudioBytes.put(mBuffer, 0, size);
@@ -202,23 +213,11 @@ public class SoundRecorder {
                     mCallback.onVoice(mBuffer, size);
                     if (now - mLastVoiceHeardMillis > SPEECH_TIMEOUT_MILLIS) {
                         Log.d(TAG, "recording timeout " + SPEECH_TIMEOUT_MILLIS);
-                        end();
                         break;
                     }
                 }
             }
-            // write the WAV file
-            try {
-                writeWAVFile();
-            } catch (IOException ex) {
-                Log.e(TAG, ex.toString());
-            }
-            dismiss();
-        }
-
-        private void end() {
-            mLastVoiceHeardMillis = Long.MAX_VALUE;
-            mCallback.onVoiceEnd();
+            end();
         }
 
         private void writeWAVFile() throws IOException {
@@ -236,6 +235,7 @@ public class SoundRecorder {
             String fileName =
                     new SimpleDateFormat("yyyyMMddHHmmss'.wav'").format(new Date());
             File wavFile = new File(parentDir, fileName);
+            mWaveFileName = wavFile.getCanonicalPath();
             Log.d(TAG, "wav file " + wavFile);
             FileOutputStream outputStream = new FileOutputStream(wavFile);
 

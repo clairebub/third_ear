@@ -3,12 +3,14 @@ package com.rj10.a3;
 import android.Manifest;
 import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.media.MediaPlayer;
 import android.os.IBinder;
 import android.os.Looper;
+import android.provider.MediaStore;
 import android.speech.RecognizerIntent;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
@@ -26,6 +28,7 @@ import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
@@ -117,7 +120,8 @@ public class MainActivity extends AppCompatActivity
         });
 
         mRecogTextListView = (RecyclerView) findViewById(R.id.recog_texts);
-        mRecogTextAdapter = new RecognizedTextsAdapter(mRecogTextList);
+        RecycleViewClickListener listener = new RecycleViewClickListener(this);
+        mRecogTextAdapter = new RecognizedTextsAdapter(mRecogTextList, listener);
         RecyclerView.LayoutManager mLayoutManager = new LinearLayoutManager(getApplicationContext());
         ((LinearLayoutManager) mLayoutManager).setStackFromEnd(true);
         mRecogTextListView.setLayoutManager(mLayoutManager);
@@ -369,6 +373,20 @@ public class MainActivity extends AppCompatActivity
             //showStatus(msg);
         }
 
+        @Override
+        public void setWaveFile(final String waveFilePath) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    String fileName = waveFilePath;
+                    mRecogTextList.add(new RecognizedText(fileName, new Date()));
+                    mRecogTextAdapter.notifyDataSetChanged();
+                    mRecogTextListView.scrollToPosition(mRecogTextList.size()-1);
+                }
+            });
+
+        }
+
         private double[][] getAudioFrames(byte[] data, int size) {
             int totalSamples = size / 2;
             int frameDuration = 40; // 40 ms
@@ -502,5 +520,34 @@ public class MainActivity extends AppCompatActivity
     private void playWavFile() {
         MediaPlayer mediaPlayer = MediaPlayer.create(getApplicationContext(), R.raw.applause_y);
         mediaPlayer.start();
+    }
+
+    class RecycleViewClickListener implements RecognizedTextsAdapter.ClickListener {
+        private final Context mContext;
+        private MediaPlayer mMediaPlayer;
+
+        public RecycleViewClickListener(Context context) {
+            mContext = context;
+        }
+        public void onClick(String waveFileName) {
+            try {
+                if (mMediaPlayer != null) {
+                    mMediaPlayer.release();
+                    mMediaPlayer = null;
+                }
+                mMediaPlayer = new MediaPlayer();
+                mMediaPlayer.setDataSource(waveFileName);
+                mMediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
+                    @Override
+                    public void onPrepared(MediaPlayer player) {
+                        player.start();
+                    }
+                });
+                mMediaPlayer.prepareAsync();
+            } catch (IOException ex) {
+                Toast.makeText(mContext, waveFileName + " not found", Toast.LENGTH_SHORT).show();
+                Log.e(TAG, ex.toString());
+            }
+        }
     }
 }
