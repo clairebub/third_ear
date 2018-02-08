@@ -4,6 +4,7 @@ import numpy as np
 import os
 import pickle
 import random
+import soundfile as sf
 import sys
 import tensorflow as tf
 
@@ -11,7 +12,13 @@ from collections import defaultdict
 from time import gmtime, strftime
 
 # mfcc
-#
+# MFCCs are commonly derived as follows:
+# 1. Take the Fourier transform of (a windowed excerpt of) a signal.
+# 2. Map the powers of the spectrum obtained above onto the mel scale, using triangular overlapping windows.
+# 3. Take the logs of the powers at each of the mel frequencies.
+# 4. Take the discrete cosine transform of the list of mel log powers, as if it were a signal.
+# 5. The MFCCs are the amplitudes of the resulting spectrum.
+
 # 1. frequency spectrum:
 #    the general range of hearing for human are 20hz to 20k hz. thus, for wave
 #    file, you typicall see sample rate of 44K, 22K, 11K etc.
@@ -89,36 +96,75 @@ class DNNModeling(object):
 
         for label_dir in label_dirs:
             for fn in glob.glob(os.path.join(data_dir, label_dir, "*.wav")):
+                #y, sr = librosa.load(
+                #    fn,
+                #    sr=None,
+                #    mono=True,
+                #    duration=DURATION)
+                y, sr = sf.read(fn)
+                y = y[:, 0] # retain only the first channel as if it's mono
+                if y.shape[0] < DURATION * sr:
+                    print("WARNING: %s is less then %d seconds long." % (fn, DURATION))
+                    continue
+                y = y[:DURATION*sr]
+                print("y.shape=[%s], sample_rate=[%d], fn=[%s]" % (y.shape, sr, fn))
+                print("y", y)
+                print("y.p[75,50,25]", np.percentile(y, 75), np.percentile(y,50), np.percentile(y,25))
+                # its shape is (num_frequency_bins, num_of_frames), where
+                # num_frequency_bins = 1 + n_fft/2
+                # number_of_frames = DURATION * SR / HOP_LENGTH
+                #                  ~= DURATION * 4 * SR / N_FFT
+                #                  ~= DURATION * 4 * 40
+                D = librosa.stft(y, n_fft=N_FFT) # Get the STFT matrix
+                D = np.abs(D)**2 # Get the magnitude and then power spectrum
+                S = librosa.feature.melspectrogram(
+                    S=D,
+                    n_mels=120,
+                    fmin=20,
+                    fmax=11000)
+
+                print("y", y)
+                print("y.p", np.percentile(y, 75), np.percentile(y,50), np.percentile(y,25))
                 y, sr = librosa.load(
                     fn,
                     sr=SAMPLE_RATE,
                     mono=True,
                     duration=DURATION)
                 print("y.shape=[%s], sample_rate=[%d], fn=[%s]" % (y.shape, sr, fn))
-                stft = np.abs(librosa.stft(y, n_fft=N_FFT))
-                # its shape is (num_frequency_bins, num_of_frames), where
-                # num_frequency_bins = 1 + n_fft/2
-                # number_of_frames = DURATION * SR / HOP_LENGTH
-                #                  ~= DURATION * 4 * SR / N_FFT
-                #                  ~= DURATION * 4 * 40
-                print("sftf.shape", stft.shape)
-                mfccs = librosa.feature.mfcc(
-                    y=y,
-                    sr=SAMPLE_RATE,
-                    n_fft=N_FFT,
-                    n_mfcc=N_MFCC)
-                # its shape (n_mfcc, number_of_frames)
-                print("mfccs.shape", mfccs.shape)
+                print("y", y)
+                print("y.p", np.percentile(y, 75), np.percentile(y,50), np.percentile(y,25))
+
+                print("stft", stft.shape, stft)
+                print("D.shape", D.shape, D)
+                print("S.shape", S.shape, S)
                 # mel-scaled spectrogram
-                mel = librosa.feature.melspectrogram(
+                S = librosa.feature.melspectrogram(
                     y=y,
                     sr=SAMPLE_RATE,
                     n_fft=N_FFT,
                     hop_length=N_FFT//4,
-                    power=2.0, **kwargs)[source]
+                    power=2.0)
+                print("S2.shape", S.shape, S)
+                mfcc2 = librosa.feature.mfcc(S=librosa.power_to_db(S))
+                print("mfcc2.shape", mfcc2.shape)
                 # filter bank matrix
-                #librosa.filters.mel(sr, n_fft, n_mels=128, fmin=0.0, fmax=None, htk=False, norm=1)
+                mel_matrix = librosa.filters.mel(
+                    sr = SAMPLE_RATE,
+                    n_fft = N_FFT,
+                    n_mels=128,
+                    fmin=20.0)
+                print("mel_matrix.shape", mel_matrix.shape)
                 # return M : np.ndarray [shape=(n_mels, 1 + n_fft/2)]
+                mfccs = librosa.feature.mfcc(
+                    y=y,
+                    sr=SAMPLE_RATE,
+                    n_mels=64,
+                    n_fft=N_FFT,
+                    n_mfcc=N_MFCC)
+                # its shape (n_mfcc, number_of_frames)
+                print("mfccs.shape", mfccs.shape)
+
+
 
     def train(self):
         # extract the features
