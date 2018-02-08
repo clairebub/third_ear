@@ -14,7 +14,7 @@ public class MFCCFeatures {
 	//	private static int counter = 0;
 	//@Test
 	public List<float[]> Test() throws FileNotFoundException {
-		final String path = "data/BMW+DRIVEBY.wav";
+		final String path = "data/test.wav";
 		final int sampleRate = 16000;
 		final int bufferSize = 1024;
 		final int bufferOverlap = 128;
@@ -58,10 +58,11 @@ public class MFCCFeatures {
 	public static void main(String[] args) throws FileNotFoundException {
 		MFCCFeatures a = new MFCCFeatures();
 		List<float[]> mfcc = a.Test();
+//		System.out.println():
 		System.out.println("mfcc size: " + mfcc.size());
 		System.out.println("mfcc values: ");
 		for (float[] x: mfcc) {
-			System.out.println("deebug: " + x.length);
+			//System.out.println("deebug: " + x.length);
 			System.out.println(Arrays.toString(x));
 		}
 	}
