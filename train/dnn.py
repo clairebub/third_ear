@@ -46,8 +46,10 @@ N_MFCC= 40
 
 class DNNModeling(object):
     def __init__(self):
-        features = np.zeros((0, 10)) # pickle.load(open("%s/audio/dnn_features.p" % (os.getcwd()), "rb"))
-        labels = np.zeros((0, 10)) #pickle.load(open("%s/audio/dnn_labels.p" % (os.getcwd()), "rb"))
+        #features = np.zeros((0, 10)) # pickle.load(open("%s/audio/dnn_features.p" % (os.getcwd()), "rb"))
+        #labels = np.zeros((0, 10)) #pickle.load(open("%s/audio/dnn_labels.p" % (os.getcwd()), "rb"))
+        features = pickle.load(open("%s/audio/dnn_features.p" % (os.getcwd()), "rb"))
+        labels = pickle.load(open("%s/audio/dnn_labels.p" % (os.getcwd()), "rb"))
 
         self.data = {'features': features, 'labels': labels}
         self.n_dim = features.shape[1]
@@ -122,9 +124,9 @@ class DNNModeling(object):
 
     def train(self):
         # extract the features
-        self.extract_features()
-        if True:
-            sys.exit(0)
+        #self.extract_features()
+        #if True:
+        #    sys.exit(0)
         # finish the graph model and keep track of some stats we are interested
         logits, y_ = self.build_dnn_model()
         loss_op = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(
