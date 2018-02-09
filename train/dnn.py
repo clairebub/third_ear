@@ -55,12 +55,8 @@ FREQUENCY_MIN = 20
 FREQUENCY_MAX = 11000
 
 class DNNModeling(object):
+
     def __init__(self):
-        #features = pickle.load(open("%s/audio/dnn_features.p" % (os.getcwd()), "rb"))
-        #labels = pickle.load(open("%s/audio/dnn_labels.p" % (os.getcwd()), "rb"))
-        features, labels = self.extract_features()
-        self.data = {'features': features, 'labels': labels}
-        self.n_dim = features.shape[1]
         self.classes = {
             0 : 'air_conditioner',
             1 : 'car_horn',
@@ -73,6 +69,11 @@ class DNNModeling(object):
             8 : 'siren',
             9 : 'street_music'
         }
+        #features = pickle.load(open("%s/audio/dnn_features.p" % (os.getcwd()), "rb"))
+        #labels = pickle.load(open("%s/audio/dnn_labels.p" % (os.getcwd()), "rb"))
+        features, labels = self.extract_features()
+        self.data = {'features': features, 'labels': labels}
+        self.n_dim = features.shape[1]
         self.X = tf.placeholder(tf.float32, [None, self.n_dim])
         self.Y = tf.placeholder(tf.float32, [None, len(self.classes)])
 
@@ -134,7 +135,7 @@ class DNNModeling(object):
     def extract_features(self):
         data_dir = "../data"
         label_dirs = ['1', '2']
-        features, labels = np.zeros(0), np.zeros(0)
+        features, labels = np.zeros(0), np.zeros(0, dtype=int)
         for label_dir in label_dirs:
             for fn in glob.glob(os.path.join(data_dir, label_dir, "*.wav")):
                 y, sr = sf.read(fn)
@@ -152,24 +153,20 @@ class DNNModeling(object):
                 # we use features as average of mfcc over the time of the signal
                 mfcc2 = np.mean(mfcc.T, axis=0)
                 features = np.append(features, mfcc2)
-                labels= np.append(labels, 1)
+                labels= np.append(labels, int(label_dir))
                 # print("mfcc2.shape", mfcc2.shape)
                 # print(mfcc2)
         features = features.reshape(-1, N_MFCC)
-        labels = labels.reshape(-1, 1)
+        labels = self.one_hot_encode(labels)
         print("features.shape", features.shape)
         print("labels.shape", labels.shape)
+        print("labels", labels)
         return features, labels
-
-    def print_array_stats(self, a, name="a"):
-        print(name, a)
-        for p in range(10, 100, 10):
-            print("%s.p(%d)=%f" % (name, p, np.percentile(a, p)))
 
     def train(self):
         # finish the graph model and keep track of some stats we are interested
         logits, y_ = self.build_dnn_model()
-        loss_op = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(
+        loss_op = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(
             logits=logits, labels=self.Y))
         optimizer = tf.train.AdamOptimizer(learning_rate=FLAGS.learning_rate).minimize(loss_op)
         correct_prediction = tf.equal(tf.argmax(y_, 1), tf.argmax(self.Y, 1))
@@ -199,6 +196,7 @@ class DNNModeling(object):
                     batch_y = train_y_shuffled[offset:(offset + FLAGS.batch_size), :]
                     _, cost = sess.run([optimizer, loss_op], feed_dict={self.X: batch_x, self.Y: batch_y})
                     cost_history = np.append(cost_history, cost)
+                print("test_x.shape", test_x.shape, "test_y.shape", test_y.shape)
                 accuracy_at_epoch = sess.run(accuracy, feed_dict={self.X: test_x, self.Y: test_y})
                 print("done epoch %d, loss=%.3f, accuracy=%.3f" % (epoch, cost_history[-1], accuracy_at_epoch))
                 #save_path = saver.save(sess, "/tmp/urban_sound_ckpt", global_step=epoch)
@@ -211,7 +209,6 @@ class DNNModeling(object):
     def inference(self):
         # load the saved model
         # extract the features
-
         pass
 
     def _shuffle_trainset(self, train_x, train_y):
@@ -222,6 +219,22 @@ class DNNModeling(object):
             train_x_shuffled.append(train_x[i])
             train_y_shuffled.append(train_y[i])
         return np.array(train_x_shuffled), np.array(train_y_shuffled)
+
+    def print_array_stats(self, a, name="a"):
+        print(name, a)
+        for p in range(10, 100, 10):
+            print("%s.p(%d)=%f" % (name, p, np.percentile(a, p)))
+
+    def one_hot_encode(self, labels):
+        print("one_hot", labels.shape, labels)
+        n_labels = len(labels)
+        n_classes = len(self.classes)
+        if np.max(labels) >= n_classes:
+            raise ValueError('label.max=%d, greater than n_classes=%d'%(np.max(labels), n_classes))
+        one_hot_encode = np.zeros((n_labels, n_classes))
+        one_hot_encode[np.arange(n_labels), labels] = 1
+
+        return one_hot_encode
 
 def main():
     dnn = DNNModeling()
