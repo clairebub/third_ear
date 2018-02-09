@@ -166,7 +166,7 @@ class DNNModeling(object):
 
         # finish the graph model and keep track of some stats we are interested
         logits, y_ = self.build_dnn_model()
-        loss_op = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(
+        loss_op = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(
             logits=logits, labels=self.Y))
         optimizer = tf.train.AdamOptimizer(learning_rate=FLAGS.learning_rate).minimize(loss_op)
         correct_prediction = tf.equal(tf.argmax(y_, 1), tf.argmax(self.Y, 1))
@@ -181,11 +181,11 @@ class DNNModeling(object):
         test_y = self.data['labels'][~rnd_indices]
 
         timestr = time.strftime("%Y%m%d-%H%M%S")
-        model_dir = '/tmp/stem/model-%s' % timestr
-#        builder = tf.saved_model.builder.SavedModelBuilder(model_dir)
-        saver = tf.train.Saver()
+        export_dir = '/tmp/stem/export-%s' % timestr
+        builder = tf.saved_model.builder.SavedModelBuilder(export_dir)
+#        saver = tf.train.Saver()
         with tf.Session() as sess:
-            tf.train.write_graph(sess.graph_def, model_dir, 'model.pbtxt')
+#            tf.train.write_graph(sess.graph_def, model_dir, 'model.pbtxt')
             sess.run(tf.global_variables_initializer())
             for epoch in range(FLAGS.num_of_epochs):
                 train_x_shuffled, train_y_shuffled = self._shuffle_trainset(train_x, train_y)
@@ -200,13 +200,13 @@ class DNNModeling(object):
                 accuracy_at_epoch = sess.run(accuracy, feed_dict={self.X: test_x, self.Y: test_y})
                 print("done epoch %d, loss=%.3f, accuracy=%.3f" % (epoch, cost_history[-1], accuracy_at_epoch))
             print("done training")
-            save_path = saver.save(sess, model_dir + "/ckpt")
-            print("saved ckpt file %s" % save_path)
-#            builder.add_meta_graph_and_variables(sess,
-#                                       [tf.saved_model.tag_constants.TRAINING],
-#                                       signature_def_map=None,
-#                                       assets_collection=None)
-#        builder.save()
+#            save_path = saver.save(sess, model_dir + "/ckpt")
+#            print("saved ckpt file %s" % save_path)
+            builder.add_meta_graph_and_variables(sess,
+                                       [tf.saved_model.tag_constants.TRAINING],
+                                       signature_def_map=None,
+                                       assets_collection=None)
+        builder.save()
 
     def _shuffle_trainset(self, train_x, train_y):
         train_x_shuffled, train_y_shuffled = [], []
