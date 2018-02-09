@@ -46,10 +46,12 @@ tf.app.flags.DEFINE_string("checkpoint_dir", "checkpoint", "Checkpoint directory
 
 FLAGS = tf.app.flags.FLAGS
 
+# we will take 3 seconds audio and look at melspectrogram at some mel frequencies
+# in the range of (FREQUENCY_MIN, FREQUENCY_MAX)
 DURATION = 3
-SAMPLE_RATE = 22050
-N_FFT = 512 # roughly N_FFT // SAMPLE_RATE ~= 0.025 sec ~= 25 ms
 N_MFCC= 40
+FREQUENCY_MIN = 20
+FREQUENCY_MAX = 11000
 
 class DNNModeling(object):
     def __init__(self):
@@ -104,75 +106,64 @@ class DNNModeling(object):
                 #    mono=True,
                 #    duration=DURATION)
                 y, sr = sf.read(fn)
-                y = y[:, 0] # retain only the first channel as if it's mono
+                #print("y.shape", y.shape, "sr", sr, "fn", fn)
+                if len(y.shape) > 1:
+                    y = y[:, 0] # retain only the first channel as if it's mono
                 if y.shape[0] < DURATION * sr:
                     print("WARNING: %s is less then %d seconds long." % (fn, DURATION))
                     continue
+                if sr < FREQUENCY_MAX * 2:
+                    print("WARNING: sample rate %d is not enough to support max frequency" % (sr, FREQUENCY_MAX))
+                    continue
                 y = y[:DURATION*sr]
-                print("y.shape=[%s], sample_rate=[%d], fn=[%s]" % (y.shape, sr, fn))
-                print("y", y)
-                print("y.p[75,50,25]", np.percentile(y, 75), np.percentile(y,50), np.percentile(y,25))
-                # its shape is (num_frequency_bins, num_of_frames), where
+                #self.print_array_stats(y, "y")
                 # num_frequency_bins = 1 + n_fft/2
+                # the frequency bins are [0, ..., SR/2]
                 # number_of_frames = DURATION * SR / HOP_LENGTH
                 #                  ~= DURATION * 4 * SR / N_FFT
-                #                  ~= DURATION * 4 * 40
-                D = librosa.stft(y, n_fft=N_FFT) # Get the STFT matrix
-                D = np.abs(D)**2 # Get the magnitude and then power spectrum
+                # what's a good N_FFT? a window for about 40 ms, which is about
+                # SR / 25 samples
+                n_fft = sr // 25
+                D = librosa.stft(y, n_fft=n_fft) # Get the STFT matrix
+                D = np.abs(D) # The magnitude spectrum
+                D = D**2  # The power spectrum
+                # The shpe of D is (freq_bins, frames). It has the N_FFT info,
+                # but need SR to determine the top frequency. The # of frames
+                # just indicate how long the audio is
+                #print("PowerSpectrum D.shape", D.shape, "n_fft", n_fft)
+                #self.print_array_stats(D, "D")
+                # N_FFT will be inferred from the shape of D, the PowerSpectrum
+                # sr need to be passed in
+                # It seems to make sense to have equal number of mel frequency
+                # bins as FFT frequency bins, but the librosa defauts to
+                # N_FFT at 2048 and N_MELS at 128, so I just devide by 10
+                # should be roughly around 100 to 200
+                n_mels = n_fft // 10
                 S = librosa.feature.melspectrogram(
+                    sr=sr,
                     S=D,
-                    n_mels=120,
-                    fmin=20,
-                    fmax=11000)
-
-                print("y", y)
-                print("y.p", np.percentile(y, 75), np.percentile(y,50), np.percentile(y,25))
-                y, sr = librosa.load(
-                    fn,
-                    sr=SAMPLE_RATE,
-                    mono=True,
-                    duration=DURATION)
-                print("y.shape=[%s], sample_rate=[%d], fn=[%s]" % (y.shape, sr, fn))
-                print("y", y)
-                print("y.p", np.percentile(y, 75), np.percentile(y,50), np.percentile(y,25))
-
-                print("stft", stft.shape, stft)
-                print("D.shape", D.shape, D)
-                print("S.shape", S.shape, S)
-                # mel-scaled spectrogram
-                S = librosa.feature.melspectrogram(
-                    y=y,
-                    sr=SAMPLE_RATE,
-                    n_fft=N_FFT,
-                    hop_length=N_FFT//4,
-                    power=2.0)
-                print("S2.shape", S.shape, S)
-                mfcc2 = librosa.feature.mfcc(S=librosa.power_to_db(S))
-                print("mfcc2.shape", mfcc2.shape)
-                # filter bank matrix
-                mel_matrix = librosa.filters.mel(
-                    sr = SAMPLE_RATE,
-                    n_fft = N_FFT,
-                    n_mels=128,
-                    fmin=20.0)
-                print("mel_matrix.shape", mel_matrix.shape)
-                # return M : np.ndarray [shape=(n_mels, 1 + n_fft/2)]
-                mfccs = librosa.feature.mfcc(
-                    y=y,
-                    sr=SAMPLE_RATE,
-                    n_mels=64,
-                    n_fft=N_FFT,
+                    n_mels=n_mels,
+                    fmin=FREQUENCY_MIN,
+                    fmax=FREQUENCY_MAX)
+                #print("S.shape", S.shape, "n_mels", n_mels)
+                #self.print_array_stats(S, "S")
+                # Now calculate the MFCC coefficients
+                mfcc = librosa.feature.mfcc(
+                    S=librosa.power_to_db(S),
                     n_mfcc=N_MFCC)
-                # its shape (n_mfcc, number_of_frames)
-                print("mfccs.shape", mfccs.shape)
+                print("mfcc.shape", mfcc.shape)
+                #print(mfcc)
 
-
+    def print_array_stats(self, a, name="a"):
+        print(name, a)
+        for p in range(10, 100, 10):
+            print("%s.p(%d)=%f" % (name, p, np.percentile(a, p)))
 
     def train(self):
         # extract the features
-        #self.extract_features()
-        #if True:
-        #    sys.exit(0)
+        self.extract_features()
+        if True:
+            sys.exit(0)
         # finish the graph model and keep track of some stats we are interested
         logits, y_ = self.build_dnn_model()
         loss_op = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(
