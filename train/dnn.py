@@ -42,8 +42,7 @@ tf.app.flags.DEFINE_integer("batch_size", 1024, "Batch size to use during traini
 tf.app.flags.DEFINE_integer("num_of_epochs", 30, "Number of epochs during training.")
 tf.app.flags.DEFINE_integer("n_hidden_units_one", 320, "Hidden layer one size.")
 tf.app.flags.DEFINE_integer("n_hidden_units_two", 320, "Hidden layer two size.")
-# string hyperparameters
-tf.app.flags.DEFINE_string("checkpoint_dir", "checkpoint", "Checkpoint directory.")
+tf.app.flags.DEFINE_boolean("training", True, "Set to True for training and False for inference")
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -69,13 +68,6 @@ class DNNModeling(object):
             8 : 'siren',
             9 : 'street_music'
         }
-        #features = pickle.load(open("%s/audio/dnn_features.p" % (os.getcwd()), "rb"))
-        #labels = pickle.load(open("%s/audio/dnn_labels.p" % (os.getcwd()), "rb"))
-        features, labels = self.extract_features()
-        self.data = {'features': features, 'labels': labels}
-        self.n_dim = features.shape[1]
-        self.X = tf.placeholder(tf.float32, [None, self.n_dim])
-        self.Y = tf.placeholder(tf.float32, [None, len(self.classes)])
 
     def build_dnn_model(self):
         sd = 1 / np.sqrt(self.n_dim)
@@ -164,6 +156,14 @@ class DNNModeling(object):
         return features, labels
 
     def train(self):
+        #features = pickle.load(open("%s/audio/dnn_features.p" % (os.getcwd()), "rb"))
+        #labels = pickle.load(open("%s/audio/dnn_labels.p" % (os.getcwd()), "rb"))
+        features, labels = self.extract_features()
+        self.data = {'features': features, 'labels': labels}
+        self.n_dim = features.shape[1]
+        self.X = tf.placeholder(tf.float32, [None, self.n_dim])
+        self.Y = tf.placeholder(tf.float32, [None, len(self.classes)])
+
         # finish the graph model and keep track of some stats we are interested
         logits, y_ = self.build_dnn_model()
         loss_op = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(
@@ -180,10 +180,10 @@ class DNNModeling(object):
         test_x = self.data['features'][~rnd_indices]
         test_y = self.data['labels'][~rnd_indices]
 
-        # saver = tf.train.Saver()
         timestr = time.strftime("%Y%m%d-%H%M%S")
         model_dir = '/tmp/stem/model-%s' % timestr
-        builder = tf.saved_model.builder.SavedModelBuilder(model_dir)
+#        builder = tf.saved_model.builder.SavedModelBuilder(model_dir)
+        saver = tf.train.Saver()
         with tf.Session() as sess:
             tf.train.write_graph(sess.graph_def, model_dir, 'model.pbtxt')
             sess.run(tf.global_variables_initializer())
@@ -199,17 +199,14 @@ class DNNModeling(object):
                 print("test_x.shape", test_x.shape, "test_y.shape", test_y.shape)
                 accuracy_at_epoch = sess.run(accuracy, feed_dict={self.X: test_x, self.Y: test_y})
                 print("done epoch %d, loss=%.3f, accuracy=%.3f" % (epoch, cost_history[-1], accuracy_at_epoch))
-                #save_path = saver.save(sess, "/tmp/urban_sound_ckpt", global_step=epoch)
-                #print("saved ckpt file %s" % save_path)
             print("done training")
-            builder.add_meta_graph_and_variables(sess,
-                                       [tf.saved_model.tag_constants.TRAINING],
-                                       signature_def_map=None,
-                                       assets_collection=None)
-    def inference(self):
-        # load the saved model
-        # extract the features
-        pass
+            save_path = saver.save(sess, model_dir + "/ckpt")
+            print("saved ckpt file %s" % save_path)
+#            builder.add_meta_graph_and_variables(sess,
+#                                       [tf.saved_model.tag_constants.TRAINING],
+#                                       signature_def_map=None,
+#                                       assets_collection=None)
+#        builder.save()
 
     def _shuffle_trainset(self, train_x, train_y):
         train_x_shuffled, train_y_shuffled = [], []
@@ -236,9 +233,21 @@ class DNNModeling(object):
 
         return one_hot_encode
 
+    def inference(self):
+        with tf.Session(graph=tf.Graph()) as sess:
+            tf.saved_model.loader.load(
+                sess,
+                [tf.saved_model.tag_constants.TRAINING],
+                "/tmp/stem/model-current")
+            print(sess.run('W:0'))
+
 def main():
     dnn = DNNModeling()
-    dnn.train()
+
+    if FLAGS.training is True:
+        dnn.train()
+    else:
+        dnn.inference()
 
 if __name__ == '__main__':
     main()
