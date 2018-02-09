@@ -7,6 +7,7 @@ import random
 import soundfile as sf
 import sys
 import tensorflow as tf
+import time
 
 from collections import defaultdict
 from time import gmtime, strftime
@@ -55,11 +56,9 @@ FREQUENCY_MAX = 11000
 
 class DNNModeling(object):
     def __init__(self):
-        #features = np.zeros((0, 10)) # pickle.load(open("%s/audio/dnn_features.p" % (os.getcwd()), "rb"))
-        #labels = np.zeros((0, 10)) #pickle.load(open("%s/audio/dnn_labels.p" % (os.getcwd()), "rb"))
-        features = pickle.load(open("%s/audio/dnn_features.p" % (os.getcwd()), "rb"))
-        labels = pickle.load(open("%s/audio/dnn_labels.p" % (os.getcwd()), "rb"))
-
+        #features = pickle.load(open("%s/audio/dnn_features.p" % (os.getcwd()), "rb"))
+        #labels = pickle.load(open("%s/audio/dnn_labels.p" % (os.getcwd()), "rb"))
+        features, labels = self.extract_features()
         self.data = {'features': features, 'labels': labels}
         self.n_dim = features.shape[1]
         self.classes = {
@@ -94,65 +93,73 @@ class DNNModeling(object):
         y_pred = tf.nn.softmax(tf.matmul(h_2, W) + b)
         return logits, y_pred
 
+    def compute_mfcc(self, y, sr):
+        #self.print_array_stats(y, "y")
+        # num_frequency_bins = 1 + n_fft/2
+        # the frequency bins are [0, ..., SR/2]
+        # number_of_frames = DURATION * SR / HOP_LENGTH
+        #                  ~= DURATION * 4 * SR / N_FFT
+        # what's a good N_FFT? a window for about 40 ms, which is about
+        # SR / 25 samples
+        n_fft = sr // 25
+        D = librosa.stft(y, n_fft=n_fft) # Get the STFT matrix
+        D = np.abs(D) # The magnitude spectrum
+        D = D**2  # The power spectrum
+        # The shpe of D is (freq_bins, frames). It has the N_FFT info,
+        # but need SR to determine the top frequency. The # of frames
+        # just indicate how long the audio is
+        #print("PowerSpectrum D.shape", D.shape, "n_fft", n_fft)
+        #self.print_array_stats(D, "D")
+        # N_FFT will be inferred from the shape of D, the PowerSpectrum
+        # sr need to be passed in
+        # It seems to make sense to have equal number of mel frequency
+        # bins as FFT frequency bins, but the librosa defauts to
+        # N_FFT at 2048 and N_MELS at 128, so I just devide by 10
+        # should be roughly around 100 to 200
+        n_mels = n_fft // 10
+        S = librosa.feature.melspectrogram(
+            sr=sr,
+            S=D,
+            n_mels=n_mels,
+            fmin=FREQUENCY_MIN,
+            fmax=FREQUENCY_MAX)
+        #print("S.shape", S.shape, "n_mels", n_mels)
+        #self.print_array_stats(S, "S")
+        # Now calculate the MFCC coefficients
+        mfcc = librosa.feature.mfcc(
+            S=librosa.power_to_db(S),
+            n_mfcc=N_MFCC)
+        return mfcc
+
     def extract_features(self):
         data_dir = "../data"
         label_dirs = ['1', '2']
-
+        features, labels = np.zeros(0), np.zeros(0)
         for label_dir in label_dirs:
             for fn in glob.glob(os.path.join(data_dir, label_dir, "*.wav")):
-                #y, sr = librosa.load(
-                #    fn,
-                #    sr=None,
-                #    mono=True,
-                #    duration=DURATION)
                 y, sr = sf.read(fn)
-                #print("y.shape", y.shape, "sr", sr, "fn", fn)
-                if len(y.shape) > 1:
-                    y = y[:, 0] # retain only the first channel as if it's mono
-                if y.shape[0] < DURATION * sr:
-                    print("WARNING: %s is less then %d seconds long." % (fn, DURATION))
-                    continue
                 if sr < FREQUENCY_MAX * 2:
                     print("WARNING: sample rate %d is not enough to support max frequency" % (sr, FREQUENCY_MAX))
                     continue
+                if y.shape[0] < DURATION * sr:
+                    print("WARNING: %s is less then %d seconds long." % (fn, DURATION))
+                    continue
+                if len(y.shape) > 1:
+                    y = y[:, 0] # retain only the first channel as if it's mono
                 y = y[:DURATION*sr]
-                #self.print_array_stats(y, "y")
-                # num_frequency_bins = 1 + n_fft/2
-                # the frequency bins are [0, ..., SR/2]
-                # number_of_frames = DURATION * SR / HOP_LENGTH
-                #                  ~= DURATION * 4 * SR / N_FFT
-                # what's a good N_FFT? a window for about 40 ms, which is about
-                # SR / 25 samples
-                n_fft = sr // 25
-                D = librosa.stft(y, n_fft=n_fft) # Get the STFT matrix
-                D = np.abs(D) # The magnitude spectrum
-                D = D**2  # The power spectrum
-                # The shpe of D is (freq_bins, frames). It has the N_FFT info,
-                # but need SR to determine the top frequency. The # of frames
-                # just indicate how long the audio is
-                #print("PowerSpectrum D.shape", D.shape, "n_fft", n_fft)
-                #self.print_array_stats(D, "D")
-                # N_FFT will be inferred from the shape of D, the PowerSpectrum
-                # sr need to be passed in
-                # It seems to make sense to have equal number of mel frequency
-                # bins as FFT frequency bins, but the librosa defauts to
-                # N_FFT at 2048 and N_MELS at 128, so I just devide by 10
-                # should be roughly around 100 to 200
-                n_mels = n_fft // 10
-                S = librosa.feature.melspectrogram(
-                    sr=sr,
-                    S=D,
-                    n_mels=n_mels,
-                    fmin=FREQUENCY_MIN,
-                    fmax=FREQUENCY_MAX)
-                #print("S.shape", S.shape, "n_mels", n_mels)
-                #self.print_array_stats(S, "S")
-                # Now calculate the MFCC coefficients
-                mfcc = librosa.feature.mfcc(
-                    S=librosa.power_to_db(S),
-                    n_mfcc=N_MFCC)
-                print("mfcc.shape", mfcc.shape)
-                #print(mfcc)
+                mfcc = self.compute_mfcc(y, sr)
+                # print("mfcc.shape", mfcc.shape)
+                # we use features as average of mfcc over the time of the signal
+                mfcc2 = np.mean(mfcc.T, axis=0)
+                features = np.append(features, mfcc2)
+                labels= np.append(labels, 1)
+                # print("mfcc2.shape", mfcc2.shape)
+                # print(mfcc2)
+        features = features.reshape(-1, N_MFCC)
+        labels = labels.reshape(-1, 1)
+        print("features.shape", features.shape)
+        print("labels.shape", labels.shape)
+        return features, labels
 
     def print_array_stats(self, a, name="a"):
         print(name, a)
@@ -160,10 +167,6 @@ class DNNModeling(object):
             print("%s.p(%d)=%f" % (name, p, np.percentile(a, p)))
 
     def train(self):
-        # extract the features
-        self.extract_features()
-        if True:
-            sys.exit(0)
         # finish the graph model and keep track of some stats we are interested
         logits, y_ = self.build_dnn_model()
         loss_op = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(
@@ -181,9 +184,11 @@ class DNNModeling(object):
         test_y = self.data['labels'][~rnd_indices]
 
         # saver = tf.train.Saver()
-        builder = tf.saved_model.builder.SavedModelBuilder('/tmp/stem/model')
+        timestr = time.strftime("%Y%m%d-%H%M%S")
+        model_dir = '/tmp/stem/model-%s' % timestr
+        builder = tf.saved_model.builder.SavedModelBuilder(model_dir)
         with tf.Session() as sess:
-            tf.train.write_graph(sess.graph_def, '/tmp/stem/model', 'model.pbtxt')
+            tf.train.write_graph(sess.graph_def, model_dir, 'model.pbtxt')
             sess.run(tf.global_variables_initializer())
             for epoch in range(FLAGS.num_of_epochs):
                 train_x_shuffled, train_y_shuffled = self._shuffle_trainset(train_x, train_y)

@@ -55,8 +55,8 @@ def main():
                                         ['fold1', 'fold2', 'fold3', 'fold4', 'fold5', 'fold6', 'fold7', 'fold8', 'fold9', 'fold10'])
 
     # save feature and label files
-    pickle.dump(features, open("../UrbanSound8K/audio/dnn_features.p", "wb"))
-    pickle.dump(labels, open("../UrbanSound8K/audio/dnn_labels.p", "wb"))
+#    pickle.dump(features, open("../UrbanSound8K/audio/dnn_features.p", "wb"))
+#    pickle.dump(labels, open("../UrbanSound8K/audio/dnn_labels.p", "wb"))
 
     # print("Print features:")
     # print(features)
