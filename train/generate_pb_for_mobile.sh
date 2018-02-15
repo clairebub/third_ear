@@ -18,4 +18,4 @@ python freeze_graph.py \
   --input_saved_model_dir=${model_dir} \
   --saved_model_tags="train" \
   --output_graph=${model_dir}/sound_model.pb \
-  --output_node_names="Variable_4"
+  --output_node_names="X,Y,w,b,w_1,b_1,w_2,b_2"

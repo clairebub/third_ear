@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import glob
 import librosa
 import numpy as np
@@ -69,19 +71,33 @@ class DNNModeling(object):
             9 : 'street_music'
         }
 
+    def load_graph(self, frozen_graph_filename="/tmp/stem/export-current/sound_model.pb"):
+        # We load the protobuf file from the disk and parse it to retrieve the
+        # unserialized graph_def
+        with tf.gfile.GFile(frozen_graph_filename, "rb") as f:
+            graph_def = tf.GraphDef()
+            graph_def.ParseFromString(f.read())
+
+        # Then, we import the graph_def into a new Graph and returns it
+        with tf.Graph().as_default() as graph:
+            # The name var will prefix every op/nodes in your graph
+            # Since we load everything in a new graph, this is not needed
+            tf.import_graph_def(graph_def, name="train")
+        return graph
+
     def build_dnn_model(self):
         sd = 1 / np.sqrt(self.n_dim)
 
-        W_1 = tf.Variable(tf.random_normal([self.n_dim, FLAGS.n_hidden_units_one], mean=0, stddev=sd))
-        b_1 = tf.Variable(tf.random_normal([FLAGS.n_hidden_units_one], mean=0, stddev=sd))
+        W_1 = tf.Variable(tf.random_normal([self.n_dim, FLAGS.n_hidden_units_one], mean=0, stddev=sd), name='w_1')
+        b_1 = tf.Variable(tf.random_normal([FLAGS.n_hidden_units_one], mean=0, stddev=sd), name='b_1')
         h_1 = tf.nn.tanh(tf.matmul(self.X, W_1) + b_1)
 
-        W_2 = tf.Variable(tf.random_normal([FLAGS.n_hidden_units_one, FLAGS.n_hidden_units_two], mean=0, stddev=sd))
-        b_2 = tf.Variable(tf.random_normal([FLAGS.n_hidden_units_two], mean=0, stddev=sd))
+        W_2 = tf.Variable(tf.random_normal([FLAGS.n_hidden_units_one, FLAGS.n_hidden_units_two], mean=0, stddev=sd), name='w_2')
+        b_2 = tf.Variable(tf.random_normal([FLAGS.n_hidden_units_two], mean=0, stddev=sd), name='b_2')
         h_2 = tf.nn.sigmoid(tf.matmul(h_1, W_2) + b_2)
 
-        W = tf.Variable(tf.random_normal([FLAGS.n_hidden_units_two, len(self.classes)], mean=0, stddev=sd))
-        b = tf.Variable(tf.random_normal([len(self.classes)], mean=0, stddev=sd))
+        W = tf.Variable(tf.random_normal([FLAGS.n_hidden_units_two, len(self.classes)], mean=0, stddev=sd), name='w')
+        b = tf.Variable(tf.random_normal([len(self.classes)], mean=0, stddev=sd), name='b')
         logits = tf.matmul(h_2, W) + b
         y_pred = tf.nn.softmax(tf.matmul(h_2, W) + b)
         return logits, y_pred
@@ -124,26 +140,32 @@ class DNNModeling(object):
             n_mfcc=N_MFCC)
         return mfcc
 
+    def extract_features_from_one_file(self, fn):
+        y, sr = sf.read(fn)
+        if sr < FREQUENCY_MAX * 2:
+            print("WARNING: sample rate %d is not enough to support max frequency" % (sr, FREQUENCY_MAX))
+            return None
+        if y.shape[0] < DURATION * sr:
+            print("WARNING: %s is less then %d seconds long." % (fn, DURATION))
+            return None
+        if len(y.shape) > 1:
+            y = y[:, 0] # retain only the first channel as if it's mono
+        y = y[:DURATION*sr]
+        mfcc = self.compute_mfcc(y, sr)
+        # print("mfcc.shape", mfcc.shape)
+        # we use features as average of mfcc over the time of the signal
+        mfcc2 = np.mean(mfcc.T, axis=0)
+        return mfcc2
+
     def extract_features(self):
         data_dir = "../data"
         label_dirs = ['1', '2']
         features, labels = np.zeros(0), np.zeros(0, dtype=int)
         for label_dir in label_dirs:
             for fn in glob.glob(os.path.join(data_dir, label_dir, "*.wav")):
-                y, sr = sf.read(fn)
-                if sr < FREQUENCY_MAX * 2:
-                    print("WARNING: sample rate %d is not enough to support max frequency" % (sr, FREQUENCY_MAX))
+                mfcc2 = self.extract_features_from_one_file(fn)
+                if mfcc2 is None:
                     continue
-                if y.shape[0] < DURATION * sr:
-                    print("WARNING: %s is less then %d seconds long." % (fn, DURATION))
-                    continue
-                if len(y.shape) > 1:
-                    y = y[:, 0] # retain only the first channel as if it's mono
-                y = y[:DURATION*sr]
-                mfcc = self.compute_mfcc(y, sr)
-                # print("mfcc.shape", mfcc.shape)
-                # we use features as average of mfcc over the time of the signal
-                mfcc2 = np.mean(mfcc.T, axis=0)
                 features = np.append(features, mfcc2)
                 labels= np.append(labels, int(label_dir))
                 # print("mfcc2.shape", mfcc2.shape)
@@ -161,8 +183,8 @@ class DNNModeling(object):
         features, labels = self.extract_features()
         self.data = {'features': features, 'labels': labels}
         self.n_dim = features.shape[1]
-        self.X = tf.placeholder(tf.float32, [None, self.n_dim])
-        self.Y = tf.placeholder(tf.float32, [None, len(self.classes)])
+        self.X = tf.placeholder(tf.float32, [None, self.n_dim], name='X')
+        self.Y = tf.placeholder(tf.float32, [None, len(self.classes)], name='Y')
 
         # finish the graph model and keep track of some stats we are interested
         logits, y_ = self.build_dnn_model()
@@ -199,13 +221,16 @@ class DNNModeling(object):
                 print("test_x.shape", test_x.shape, "test_y.shape", test_y.shape)
                 accuracy_at_epoch = sess.run(accuracy, feed_dict={self.X: test_x, self.Y: test_y})
                 print("done epoch %d, loss=%.3f, accuracy=%.3f" % (epoch, cost_history[-1], accuracy_at_epoch))
-            print("done training")
+
 #            save_path = saver.save(sess, model_dir + "/ckpt")
 #            print("saved ckpt file %s" % save_path)
             builder.add_meta_graph_and_variables(sess,
                                        [tf.saved_model.tag_constants.TRAINING],
                                        signature_def_map=None,
                                        assets_collection=None)
+            # training done, try inference now
+            print("done training")
+
         builder.save()
 
     def _shuffle_trainset(self, train_x, train_y):
@@ -234,12 +259,36 @@ class DNNModeling(object):
         return one_hot_encode
 
     def inference(self):
-        with tf.Session(graph=tf.Graph()) as sess:
-            tf.saved_model.loader.load(
-                sess,
-                [tf.saved_model.tag_constants.TRAINING],
-                "/tmp/stem/model-current")
-            print(sess.run('W:0'))
+        graph = self.load_graph()
+        node_names = [n.name for n in graph.as_graph_def().node]
+        print("graph nodes:", node_names)
+        x = graph.get_tensor_by_name('train/X:0')
+        y = graph.get_tensor_by_name('train/Y:0')
+        print("x", x)
+        print("y", y)
+
+        test_file = "../data/1/baby-crying-01.wav"
+        mfcc2 = self.extract_features_from_one_file(test_file)
+        if mfcc2 is None:
+            print("Error: failed to extract mfcc features from file:", test_file)
+            return
+        y_value =  np.random.uniform(0, 1, 10)
+        print("y_value", y_value)
+
+        # We launch a Session
+        with tf.Session(graph=graph) as sess:
+            # Note: we don't nee to initialize/restore anything
+            # There is no Variables in this graph, only hardcoded constants
+            y_out = sess.run(y, feed_dict={
+                x: [mfcc2], # < 45
+                y: [y_value]
+            })
+            # I taught a neural net to recognise when a sum of numbers is bigger than 45
+            # it should return False in this case
+            print(y_out) # [[ False ]] Yay, it works!
+            y_ind = np.argmax(y_out)
+            pred = self.classes[y_ind]
+            print("***** inferece result is: ", pred)
 
 def main():
     dnn = DNNModeling()
