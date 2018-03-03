@@ -1,15 +1,3 @@
-# ==================================================
-# Copyright (C) 2017-2017
-# author: yilin.shen
-# email: yilin.shen@samsung.com
-# Date: 12/11/2017
-#
-# This file is part of UrbanSoundClassification project.
-#
-# This can not be copied and/or distributed
-# without the express permission of yilin.shen
-# ==================================================
-
 import os
 import sys
 import pickle

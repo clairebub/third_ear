@@ -3,12 +3,14 @@ package com.rj10.a3;
 import android.Manifest;
 import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.media.MediaPlayer;
 import android.os.IBinder;
 import android.os.Looper;
+import android.provider.MediaStore;
 import android.speech.RecognizerIntent;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
@@ -20,13 +22,13 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.text.TextUtils;
 import android.util.Log;
-import android.util.TimingLogger;
 import android.view.View;
 import android.widget.Button;
 import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
@@ -63,7 +65,7 @@ public class MainActivity extends AppCompatActivity
     private List<RecognizedText> mRecogTextList = new ArrayList<>();
     private RecognizedTextsAdapter mRecogTextAdapter;
 
-    private VoiceRecorder mVoiceRecorder;
+    private SoundRecorder mVoiceRecorder;
     private SpeechApiService mSpeechApiService;
     int mRequestCount = 0;
 
@@ -118,7 +120,8 @@ public class MainActivity extends AppCompatActivity
         });
 
         mRecogTextListView = (RecyclerView) findViewById(R.id.recog_texts);
-        mRecogTextAdapter = new RecognizedTextsAdapter(mRecogTextList);
+        RecycleViewClickListener listener = new RecycleViewClickListener(this);
+        mRecogTextAdapter = new RecognizedTextsAdapter(mRecogTextList, listener);
         RecyclerView.LayoutManager mLayoutManager = new LinearLayoutManager(getApplicationContext());
         ((LinearLayoutManager) mLayoutManager).setStackFromEnd(true);
         mRecogTextListView.setLayoutManager(mLayoutManager);
@@ -252,9 +255,9 @@ public class MainActivity extends AppCompatActivity
 
     private void startSpeechRecStreaming() {
         String[] permissions = new String[] {
-                Manifest.permission.INTERNET,
                 Manifest.permission.RECORD_AUDIO,
-                Manifest.permission.READ_PHONE_STATE
+                Manifest.permission.READ_PHONE_STATE,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
         };
         if (!checkPermissions(permissions, PERMISSIONS_REQUEST_FOR_CLOUD)) {
             return;
@@ -263,7 +266,7 @@ public class MainActivity extends AppCompatActivity
         if (mVoiceRecorder != null) {
             mVoiceRecorder.stop();
         }
-        mVoiceRecorder = new VoiceRecorder();
+        mVoiceRecorder = new SoundRecorder();
         mVoiceRecorder.start(mVoiceCallback);
     }
 
@@ -304,12 +307,12 @@ public class MainActivity extends AppCompatActivity
     // For cloud based speech recog streaming Api only.
     // The callbacks of onVoice() are called from a separate thread.
     //
-    private final VoiceRecorder.Callback mVoiceCallback = new VoiceRecorder.Callback() {
+    private final SoundRecorder.Callback mVoiceCallback = new SoundRecorder.Callback() {
         private int mSampleRate = -1;
         @Override
         public void onVoiceStart(int sampleRate) {
             mSampleRate = sampleRate;
-            Log.d(TAG, "VoiceRecorder.onVoiceStart(): " + (Looper.myLooper() == Looper.getMainLooper()));
+            Log.d(TAG, "SoundRecorder.onVoiceStart(): " + (Looper.myLooper() == Looper.getMainLooper()));
             if (mSpeechApiService == null) {
                 Log.d(TAG, "mSpeechApiService is null onVoiceStart");
                 return;
@@ -319,7 +322,7 @@ public class MainActivity extends AppCompatActivity
 
         @Override
         public void onVoice(byte[] data, int size) {
-            // Log.d(TAG,"VoiceRecorder.onVoice(): " + (Looper.myLooper() == Looper.getMainLooper()));
+            // Log.d(TAG,"SoundRecorder.onVoice(): " + (Looper.myLooper() == Looper.getMainLooper()));
             if (mSpeechApiService == null) {
                 Log.d(TAG, "mSpeechApiService is null onVoice");
                 return;
@@ -328,6 +331,7 @@ public class MainActivity extends AppCompatActivity
                 Log.e(TAG, "sampleRate is -1 when onVoice");
                 return;
             }
+            /*
             // get the frames from the audio buffer
             double[][] frames = getAudioFrames(data, size);
 
@@ -349,13 +353,13 @@ public class MainActivity extends AppCompatActivity
             for (int i = 0; i < frames.length; i++) {
                 double[] mfccFeatures = mfcc.getParameters(frames[i]);
                 Log.d(TAG, String.format("mfcc feature length: " + mfccFeatures.length));
-            }
+            } */
            // mSpeechApiService.recognize(data, size);
         }
 
         @Override
         public void onVoiceEnd() {
-            Log.d(TAG,"VoiceRecorder.onVoiceEnd(): " + (Looper.myLooper() == Looper.getMainLooper()));
+            Log.d(TAG,"SoundRecorder.onVoiceEnd(): " + (Looper.myLooper() == Looper.getMainLooper()));
             if (mSpeechApiService != null) {
                 Log.d(TAG,"mSpeechApiService is null onVoiceEnd");
                 return;
@@ -365,8 +369,22 @@ public class MainActivity extends AppCompatActivity
 
         @Override
         public void deebug(String msg) {
-            Log.d(TAG,"VoiceRecorder.deebug(): " + msg + ", " + (Looper.myLooper() == Looper.getMainLooper()));
+            Log.d(TAG,"SoundRecorder.deebug(): " + msg + ", " + (Looper.myLooper() == Looper.getMainLooper()));
             //showStatus(msg);
+        }
+
+        @Override
+        public void setWaveFile(final String waveFilePath) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    String fileName = waveFilePath;
+                    mRecogTextList.add(new RecognizedText(fileName, new Date()));
+                    mRecogTextAdapter.notifyDataSetChanged();
+                    mRecogTextListView.scrollToPosition(mRecogTextList.size()-1);
+                }
+            });
+
         }
 
         private double[][] getAudioFrames(byte[] data, int size) {
@@ -502,5 +520,34 @@ public class MainActivity extends AppCompatActivity
     private void playWavFile() {
         MediaPlayer mediaPlayer = MediaPlayer.create(getApplicationContext(), R.raw.applause_y);
         mediaPlayer.start();
+    }
+
+    class RecycleViewClickListener implements RecognizedTextsAdapter.ClickListener {
+        private final Context mContext;
+        private MediaPlayer mMediaPlayer;
+
+        public RecycleViewClickListener(Context context) {
+            mContext = context;
+        }
+        public void onClick(String waveFileName) {
+            try {
+                if (mMediaPlayer != null) {
+                    mMediaPlayer.release();
+                    mMediaPlayer = null;
+                }
+                mMediaPlayer = new MediaPlayer();
+                mMediaPlayer.setDataSource(waveFileName);
+                mMediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
+                    @Override
+                    public void onPrepared(MediaPlayer player) {
+                        player.start();
+                    }
+                });
+                mMediaPlayer.prepareAsync();
+            } catch (IOException ex) {
+                Toast.makeText(mContext, waveFileName + " not found", Toast.LENGTH_SHORT).show();
+                Log.e(TAG, ex.toString());
+            }
+        }
     }
 }
