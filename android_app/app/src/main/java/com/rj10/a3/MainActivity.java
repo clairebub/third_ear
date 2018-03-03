@@ -94,7 +94,7 @@ public class MainActivity extends AppCompatActivity
         setContentView(R.layout.activity_main);
 
         mStatus = (TextView) findViewById(R.id.status);
-        mStatus.setHint("Version: 0.1c");
+        mStatus.setHint("Version: 0.1d");
         Button onOffButton = (Button) findViewById(R.id.start);
         onOffButton.setOnClickListener(new View.OnClickListener() {
             @Override
