@@ -8,7 +8,7 @@ import urban_sound_data
 parser = argparse.ArgumentParser()
 parser.add_argument('--batch_size', default=100, type=int,
                     help='batch size')
-parser.add_argument('--train_steps', default=20, type=int,
+parser.add_argument('--train_steps', default=1000, type=int,
                     help='number of training steps')
 
 def main(argv):
