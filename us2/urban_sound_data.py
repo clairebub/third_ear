@@ -11,12 +11,12 @@ import tensorflow as tf
 
 RUN_FEATURE_EXTRACTION = True
 PROJECT_ROOT_DIR = "../"
-RAW_DATA_DIR = PROJECT_ROOT_DIR + "data/raw"
+RAW_DATA_DIR = PROJECT_ROOT_DIR + "data/UrbanSound8k/audio"
 FEATURE_DATA_DIR = PROJECT_ROOT_DIR + "data/feature"
 
 # we will take 3 seconds audio and look at melspectrogram at some mel frequencies
 # in the range of (FREQUENCY_MIN, FREQUENCY_MAX)
-DURATION = 3
+DURATION = 1
 N_MFCC= 40
 FREQUENCY_MIN = 20
 FREQUENCY_MAX = 11000
@@ -57,20 +57,21 @@ def eval_input_fn(features, labels, batch_size):
     dataset = dataset.batch(batch_size)
     return dataset
 
-def load_data(train_set_percent=1):
-    """Returns the urban sound data set as dataframes.
-    As data frames of (train_x, train_y), (test_x, test_y).
+def load_data(folders):
+    """Returns the urban sound data set as dataframes (x, y).
     """
     features, labels = np.zeros(0), np.zeros(0, dtype=int)
-    num_classes = len(SOUND_CLASSES)
-    for dir_label in range(num_classes):
-        dir_label = str(dir_label)
-        for fn in glob.glob(os.path.join(RAW_DATA_DIR, dir_label, "*.wav")):
+    for folder_id in folders:
+        folder = "fold%d"%(folder_id)
+        for fn in glob.glob(os.path.join(RAW_DATA_DIR, folder, "*.wav")):
+            just_fn_name = fn.split('/')[-1]
+            class_id = just_fn_name.split('-')[1]
+            #print("fn", fn, just_fn_name, class_id)
             mfcc2 = _extract_features_from_one_file(fn)
             if mfcc2 is None:
                 continue
             features = np.append(features, mfcc2)
-            labels= np.append(labels, int(dir_label))
+            labels= np.append(labels, class_id)
     # turn features into DataFrame
     features = features.reshape(-1, N_MFCC)
     col_names = []
@@ -80,21 +81,15 @@ def load_data(train_set_percent=1):
     features = pd.DataFrame(data = features, columns = col_names)
     # turn labels into DataFrame
     labels = pd.DataFrame(data = labels, dtype=np.int64, columns = ["y"])
-    # split into 80:20 for training and test
-    num_training_examples = int(features.shape[0] * train_set_percent)
-    train_x = features[:num_training_examples]
-    train_y = labels[:num_training_examples]
-    test_x = features[num_training_examples:]
-    test_y = labels[num_training_examples:]
-    return (train_x, train_y), (test_x, test_y)
+    return features, labels
 
 def _extract_features_from_one_file(fn):
     y, sr = sf.read(fn)
     if sr < FREQUENCY_MAX * 2:
-        print("WARNING: sample rate %d is not enough to support max frequency" % (sr, FREQUENCY_MAX))
+        #print("WARNING: sample rate %d is not enough to support max frequency %d" % (sr, FREQUENCY_MAX))
         return None
     if y.shape[0] < DURATION * sr:
-        print("WARNING: %s is less then %d seconds long." % (fn, DURATION))
+        #print("WARNING: %s is less then %d seconds long." % (fn, DURATION))
         return None
     if len(y.shape) > 1:
         y = y[:, 0] # retain only the first channel as if it's mono
