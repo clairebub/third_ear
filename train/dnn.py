@@ -204,10 +204,11 @@ class DNNModeling(object):
 
         timestr = time.strftime("%Y%m%d-%H%M%S")
         export_dir = '/tmp/stem/export-%s' % timestr
+        model_dir = './my_model'
         builder = tf.saved_model.builder.SavedModelBuilder(export_dir)
-#        saver = tf.train.Saver()
+        saver = tf.train.Saver()
         with tf.Session() as sess:
-#            tf.train.write_graph(sess.graph_def, model_dir, 'model.pbtxt')
+            tf.train.write_graph(sess.graph_def, model_dir, 'model.pbtxt')
             sess.run(tf.global_variables_initializer())
             for epoch in range(FLAGS.num_of_epochs):
                 train_x_shuffled, train_y_shuffled = self._shuffle_trainset(train_x, train_y)
@@ -222,7 +223,7 @@ class DNNModeling(object):
                 accuracy_at_epoch = sess.run(accuracy, feed_dict={self.X: test_x, self.Y: test_y})
                 print("done epoch %d, loss=%.3f, accuracy=%.3f" % (epoch, cost_history[-1], accuracy_at_epoch))
 
-#            save_path = saver.save(sess, model_dir + "/ckpt")
+            save_path = saver.save(sess, model_dir + "/ckpt")
 #            print("saved ckpt file %s" % save_path)
             builder.add_meta_graph_and_variables(sess,
                                        [tf.saved_model.tag_constants.TRAINING],
