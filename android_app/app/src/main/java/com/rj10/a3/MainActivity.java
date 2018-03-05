@@ -1,7 +1,6 @@
 package com.rj10.a3;
 
 import android.Manifest;
-import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -10,7 +9,6 @@ import android.content.pm.PackageManager;
 import android.media.MediaPlayer;
 import android.os.IBinder;
 import android.os.Looper;
-import android.provider.MediaStore;
 import android.speech.RecognizerIntent;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
@@ -24,7 +22,6 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
-import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -34,7 +31,6 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 
 import be.tarsos.dsp.AudioDispatcher;
 import be.tarsos.dsp.AudioEvent;
@@ -59,15 +55,15 @@ public class MainActivity extends AppCompatActivity
 
     private final int REQ_CODE_SPEECH_RECOG_LOCAL = 100;
 
-    private TextView mStatus;
-    private RadioGroup mRadioGroup;
+    private TextView mStatusTextView;
+    private Button mStartButton;
+    private Button mStopButton;
     private RecyclerView mRecogTextListView;
     private List<RecognizedText> mRecogTextList = new ArrayList<>();
     private RecognizedTextsAdapter mRecogTextAdapter;
 
     private SoundRecorder mVoiceRecorder;
     private SpeechApiService mSpeechApiService;
-    int mRequestCount = 0;
 
     /** Defines callbacks for service binding, passed to bindService() */
     private final ServiceConnection mSpeechApiServiceConnection = new ServiceConnection() {
@@ -95,29 +91,26 @@ public class MainActivity extends AppCompatActivity
 
         setContentView(R.layout.activity_main);
 
-        mStatus = (TextView) findViewById(R.id.status);
-        mStatus.setHint("Version: 0.1d");
-        Button onOffButton = (Button) findViewById(R.id.start);
-        onOffButton.setOnClickListener(new View.OnClickListener() {
+        mStatusTextView = (TextView) findViewById(R.id.statusTextView);
+        mStatusTextView.setHint("Version: 0.3");
+
+        mStartButton = (Button) findViewById(R.id.startButton);
+        mStartButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                mRequestCount++;
-                handleOnClick((Button) v);
+                handleStartButtonClick((Button) v);
             }
         });
+        mStartButton.setEnabled(true);
 
-        mRadioGroup = (RadioGroup) findViewById(R.id.radioGroup);
-        mRadioGroup.check(R.id.mode_streaming);
-        mRadioGroup.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+        mStopButton = (Button) findViewById(R.id.stopButton);
+        mStopButton.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onCheckedChanged(RadioGroup radioGroup, int checkedId) {
-                if (checkedId == R.id.mode_local) {
-                    // cloud recognition runs in the background. need to make sure it is no
-                    // longer running if mode is switching to local
-                    stopSpeechRecStreaming();
-                }
+            public void onClick(View v) {
+                handleStopButtonClick((Button) v);
             }
         });
+        mStopButton.setEnabled(false);
 
         mRecogTextListView = (RecyclerView) findViewById(R.id.recog_texts);
         RecycleViewClickListener listener = new RecycleViewClickListener(this);
@@ -127,7 +120,6 @@ public class MainActivity extends AppCompatActivity
         mRecogTextListView.setLayoutManager(mLayoutManager);
         mRecogTextListView.setItemAnimator(new DefaultItemAnimator());
         mRecogTextListView.setAdapter(mRecogTextAdapter);
-
         mRecogTextList.add(new RecognizedText("ready for speech recognition...", new Date()));
         mRecogTextAdapter.notifyDataSetChanged();
     }
@@ -170,49 +162,16 @@ public class MainActivity extends AppCompatActivity
         Log.d(TAG, "onDestroy");
     }
 
-    private void handleOnClick(Button button) {
-        if (button.getText().toString().equalsIgnoreCase("start")) {
-            // playWavFile();
-            startSpeechRec();
-            button.setText("Stop");
-        } else {
-            stopSpeechRec();
-            button.setText("Start");
-        }
+    private void handleStartButtonClick(Button button) {
+        mStartButton.setEnabled(false);
+        mStopButton.setEnabled(true);
+        startSpeechRec();
     }
 
-    private void startSpeechRec() {
-        int radioButtonID = mRadioGroup.getCheckedRadioButtonId();
-        switch (radioButtonID) {
-            case R.id.mode_local:
-                startSpeechRecLocal();
-                break;
-            case R.id.mode_streaming:
-                startSpeechRecStreaming();
-                break;
-            default:
-                String msg = "unexpected radioButtonId: " + radioButtonID;
-                Log.d(TAG, msg);
-                mStatus.setText(msg);
-                break;
-        }
-    }
-
-    private void stopSpeechRec() {
-        int radioButtonID = mRadioGroup.getCheckedRadioButtonId();
-        switch (radioButtonID) {
-            case R.id.mode_streaming:
-                stopSpeechRecStreaming();
-                break;
-            case R.id.mode_local:
-                // nothing to do for local mode
-                break;
-            default:
-                String msg = "unexpected radioButtonId: " + radioButtonID;
-                Log.d(TAG, msg);
-                mStatus.setText(msg);
-                break;
-        }
+    private void handleStopButtonClick(Button button) {
+        mStopButton.setEnabled(false);
+        mStartButton.setEnabled(true);
+        stopSpeechRec();
     }
 
     @Override
@@ -236,7 +195,7 @@ public class MainActivity extends AppCompatActivity
                 break;
         }
     }
-
+/*
     private void startSpeechRecLocal() {
         Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         intent.putExtra(
@@ -252,8 +211,8 @@ public class MainActivity extends AppCompatActivity
             Log.d(TAG, a.toString());
         }
     }
-
-    private void startSpeechRecStreaming() {
+*/
+    private void startSpeechRec() {
         String[] permissions = new String[] {
                 Manifest.permission.RECORD_AUDIO,
                 Manifest.permission.READ_PHONE_STATE,
@@ -271,7 +230,7 @@ public class MainActivity extends AppCompatActivity
     }
 
 
-    private void stopSpeechRecStreaming() {
+    private void stopSpeechRec() {
         Log.d(TAG, "stopSpeechRecStreaming: " + mVoiceRecorder);
         if (mVoiceRecorder != null) {
             mVoiceRecorder.stop();
@@ -491,7 +450,7 @@ public class MainActivity extends AppCompatActivity
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                mStatus.setText(msg);
+                mStatusTextView.setText(msg);
             }
         });
     }
@@ -506,7 +465,7 @@ public class MainActivity extends AppCompatActivity
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        TextView text = (TextView) findViewById(R.id.status);
+                        TextView text = (TextView) findViewById(R.id.statusTextView);
                         text.setText("" + pitchInHz);
                     }
                 });
