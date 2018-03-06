@@ -7,47 +7,39 @@
     android:layout_height="match_parent">
 
     <android.support.v7.widget.RecyclerView
-        android:id="@+id/recog_texts"
-        android:layout_width="0dp"
+        android:id="@+id/soundsRecyclerView"
+        android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginBottom="8dp"
-        android:layout_marginEnd="8dp"
-        android:layout_marginStart="8dp"
-        android:layout_marginTop="8dp"
-        app:layout_constraintBottom_toTopOf="@+id/start"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        android:layout_weight="1" />
 
-    <LinearLayout
+    <TextView
+        android:id="@+id/appStatus"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal">
+        android:textSize="16dp"
+        android:gravity="center"
+        android:padding="12dp" />
 
-
-        <TextView
-            android:id="@+id/statusTextView"
+    <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp" />
+            android:orientation="horizontal"
+            android:layout_gravity="center"
+            android:layout_margin="8dp"
+            android:padding="8dp">
 
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
-
-            <Button
+        <Button
                 android:id="@+id/startButton"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
+                android:layout_height="wrap_content"
+                android:padding="8dp"
+                android:text="start" />
 
-            <Button
+        <Button
                 android:id="@+id/stopButton"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
-
-        </LinearLayout>
-
-
+                android:layout_height="wrap_content"
+                android:padding="8dp"
+                android:text="stop" />
     </LinearLayout>
 </LinearLayout>
