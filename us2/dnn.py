@@ -11,6 +11,18 @@ parser.add_argument('--batch_size', default=100, type=int,
 parser.add_argument('--train_steps', default=1000, type=int,
                     help='number of training steps')
 
+#feature_spec = {'foo': tf.FixedLenFeature(...),
+#                'bar': tf.VarLenFeature(...)}
+#
+#def serving_input_receiver_fn():
+#  """An input receiver that expects a serialized tf.Example."""
+#  serialized_tf_example = tf.placeholder(dtype=tf.string,
+#                                         shape=[default_batch_size],
+#                                         name='input_example_tensor')
+#  receiver_tensors = {'examples': serialized_tf_example}
+#  features = tf.parse_example(serialized_tf_example, feature_spec)
+#  return tf.estimator.export.ServingInputReceiver(features, receiver_tensors)
+
 def main(argv):
     args = parser.parse_args(argv[1:])
 
@@ -56,6 +68,11 @@ def main(argv):
                 test_y,
                 args.batch_size))
     print('\nTest set accuracy: {accuracy:0.3f}\n'.format(**eval_result))
+
+    # export the trained model
+    export_dir_base = './model_export'
+#    serving_input_receiver_fn
+#    classifier.export_savedmodel()
 
     # Generate predictions from the model
     x, y = urban_sound_data.load_data([9])

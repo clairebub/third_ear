@@ -15,7 +15,7 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.support.v7.widget.DefaultItemAnimator;
+import android.support.v7.widget.DividerItemDecoration;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.text.TextUtils;
@@ -24,6 +24,8 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import org.w3c.dom.Text;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -55,12 +57,12 @@ public class MainActivity extends AppCompatActivity
 
     private final int REQ_CODE_SPEECH_RECOG_LOCAL = 100;
 
-    private TextView mStatusTextView;
+    private TextView mAppStatusTextView;
     private Button mStartButton;
     private Button mStopButton;
-    private RecyclerView mRecogTextListView;
-    private List<RecognizedText> mRecogTextList = new ArrayList<>();
-    private RecognizedTextsAdapter mRecogTextAdapter;
+    private RecyclerView mRVSounds;
+    private List<SoundRecogItem> mSoundItems = new ArrayList<>();
+    private SoundRecogAdapter mSoundRecogAdapter;
 
     private SoundRecorder mVoiceRecorder;
     private SpeechApiService mSpeechApiService;
@@ -91,14 +93,15 @@ public class MainActivity extends AppCompatActivity
 
         setContentView(R.layout.activity_main);
 
-        mStatusTextView = (TextView) findViewById(R.id.statusTextView);
-        mStatusTextView.setHint("Version: 0.3");
+        mAppStatusTextView = (TextView) findViewById(R.id.appStatus);
+        mAppStatusTextView.setText("Ready.");
 
         mStartButton = (Button) findViewById(R.id.startButton);
         mStartButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 handleStartButtonClick((Button) v);
+                mAppStatusTextView.setText("Listening...");
             }
         });
         mStartButton.setEnabled(true);
@@ -108,20 +111,24 @@ public class MainActivity extends AppCompatActivity
             @Override
             public void onClick(View v) {
                 handleStopButtonClick((Button) v);
+                mAppStatusTextView.setText("Ready.");
             }
         });
         mStopButton.setEnabled(false);
 
-        mRecogTextListView = (RecyclerView) findViewById(R.id.recog_texts);
-        RecycleViewClickListener listener = new RecycleViewClickListener(this);
-        mRecogTextAdapter = new RecognizedTextsAdapter(mRecogTextList, listener);
-        RecyclerView.LayoutManager mLayoutManager = new LinearLayoutManager(getApplicationContext());
-        ((LinearLayoutManager) mLayoutManager).setStackFromEnd(true);
-        mRecogTextListView.setLayoutManager(mLayoutManager);
-        mRecogTextListView.setItemAnimator(new DefaultItemAnimator());
-        mRecogTextListView.setAdapter(mRecogTextAdapter);
-        mRecogTextList.add(new RecognizedText("ready for speech recognition...", new Date()));
-        mRecogTextAdapter.notifyDataSetChanged();
+        mRVSounds = (RecyclerView) findViewById(R.id.soundsRecyclerView);
+        RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(this);
+        mRVSounds.setLayoutManager(layoutManager);
+        RecyclerView.ItemDecoration itemDecoration = new
+                DividerItemDecoration(this, DividerItemDecoration.VERTICAL);
+        mRVSounds.addItemDecoration(itemDecoration);
+
+        mSoundRecogAdapter = new SoundRecogAdapter(this, mSoundItems);
+        mSoundRecogAdapter.setOnItemClickListener(new SoundItemClickListener(this));
+        mRVSounds.setAdapter(mSoundRecogAdapter);
+
+        mSoundItems.add(new SoundRecogItem("Ready for sound recognition...", new Date()));
+        mSoundRecogAdapter.notifyDataSetChanged();
     }
 
     /**
@@ -185,8 +192,8 @@ public class MainActivity extends AppCompatActivity
                             .getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
                     String recogText = result.get(0);
                     Log.d(TAG, recogText);
-                    mRecogTextList.add(new RecognizedText(recogText, new Date()));
-                    mRecogTextAdapter.notifyDataSetChanged();
+                    mSoundItems.add(new SoundRecogItem(recogText, new Date()));
+                    mSoundRecogAdapter.notifyDataSetChanged();
                 }
                 break;
             }
@@ -250,11 +257,11 @@ public class MainActivity extends AppCompatActivity
                     @Override
                     public void run() {
                         //if(isFinal) {
-                            mRecogTextList.add(new RecognizedText(text, new Date()));
+                            mSoundItems.add(new SoundRecogItem(text, new Date()));
                             Log.d(TAG, "isFinal=" + isFinal + ", got text: " + text);
-                            mRecogTextAdapter.notifyDataSetChanged();
+                            mSoundRecogAdapter.notifyDataSetChanged();
                         //}
-                        mRecogTextListView.scrollToPosition(mRecogTextList.size()-1);
+                        mRVSounds.scrollToPosition(mSoundItems.size()-1);
                     }
                 });
             }
@@ -337,13 +344,13 @@ public class MainActivity extends AppCompatActivity
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    String fileName = waveFilePath;
-                    mRecogTextList.add(new RecognizedText(fileName, new Date()));
-                    mRecogTextAdapter.notifyDataSetChanged();
-                    mRecogTextListView.scrollToPosition(mRecogTextList.size()-1);
+                    SoundRecogItem item = new SoundRecogItem("unlabeled", new Date());
+                    item.setWavFileName(waveFilePath);
+                    mSoundItems.add(item);
+                    mSoundRecogAdapter.notifyDataSetChanged();
+                    mRVSounds.scrollToPosition(mSoundItems.size()-1);
                 }
             });
-
         }
 
         private double[][] getAudioFrames(byte[] data, int size) {
@@ -450,7 +457,7 @@ public class MainActivity extends AppCompatActivity
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                mStatusTextView.setText(msg);
+                mAppStatusTextView.setText(msg);
             }
         });
     }
@@ -465,7 +472,7 @@ public class MainActivity extends AppCompatActivity
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        TextView text = (TextView) findViewById(R.id.statusTextView);
+                        TextView text = (TextView) findViewById(R.id.appStatus);
                         text.setText("" + pitchInHz);
                     }
                 });
@@ -481,14 +488,17 @@ public class MainActivity extends AppCompatActivity
         mediaPlayer.start();
     }
 
-    class RecycleViewClickListener implements RecognizedTextsAdapter.ClickListener {
+    class SoundItemClickListener implements SoundRecogAdapter.OnItemClickListener {
         private final Context mContext;
         private MediaPlayer mMediaPlayer;
 
-        public RecycleViewClickListener(Context context) {
+        public SoundItemClickListener(Context context) {
             mContext = context;
         }
-        public void onClick(String waveFileName) {
+
+        @Override
+        public void onItemClick(String waveFileName) {
+            Log.w(TAG, "clicked file " + waveFileName);
             try {
                 if (mMediaPlayer != null) {
                     mMediaPlayer.release();
