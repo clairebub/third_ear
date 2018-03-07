@@ -120,7 +120,7 @@ public class MainActivity extends AppCompatActivity
             @Override
             public void onClick(View view) {
                 mSoundItems.clear();
-                mSoundItems.add(SoundRecogItem.createItemForTextRecognized(new Date(), "Virtual Ear initialized."));
+                mSoundItems.add(SoundRecogItem.createItemForTextRecognized(new Date(), "Virtual Ear is ready to use."));
                 mSoundRecogAdapter.notifyDataSetChanged();
             }
         });
@@ -136,7 +136,7 @@ public class MainActivity extends AppCompatActivity
         mSoundRecogAdapter.setOnItemClickListener(new SoundItemClickListener(this));
         mRVSounds.setAdapter(mSoundRecogAdapter);
 
-        mSoundItems.add(SoundRecogItem.createItemForTextRecognized(new Date(), "Virtual Ear initialized."));
+        mSoundItems.add(SoundRecogItem.createItemForTextRecognized(new Date(), "Virtual Ear is ready to use."));
         mSoundRecogAdapter.notifyDataSetChanged();
     }
 
@@ -253,6 +253,9 @@ public class MainActivity extends AppCompatActivity
         private int mSampleRate = -1;
         @Override
         public void onVoiceStart(int sampleRate) {
+            if (!mConversationMode.isChecked()) {
+                return;
+            }
             mSampleRate = sampleRate;
             Log.d(TAG, "SoundRecorder.onVoiceStart(): " + (Looper.myLooper() == Looper.getMainLooper()));
             if (mSpeechApiService == null) {
@@ -264,6 +267,9 @@ public class MainActivity extends AppCompatActivity
 
         @Override
         public void onVoice(byte[] data, int size) {
+            if (!mConversationMode.isChecked()) {
+                return;
+            }
             // Log.d(TAG,"SoundRecorder.onVoice(): " + (Looper.myLooper() == Looper.getMainLooper()));
             if (mSpeechApiService == null) {
                 Log.d(TAG, "mSpeechApiService is null onVoice");
@@ -302,6 +308,9 @@ public class MainActivity extends AppCompatActivity
         @Override
         public void onVoiceEnd() {
             Log.d(TAG,"SoundRecorder.onVoiceEnd(): " + (Looper.myLooper() == Looper.getMainLooper()));
+            if (!mConversationMode.isChecked()) {
+                return;
+            }
             if (mSpeechApiService != null) {
                 Log.d(TAG,"mSpeechApiService is null onVoiceEnd");
                 return;
