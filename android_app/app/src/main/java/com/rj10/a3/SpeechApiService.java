@@ -89,6 +89,7 @@ public class SpeechApiService extends Service {
 
     private Callback mCallback;
     private final IBinder mBinder = new SpeechApiBinder();
+    private int mSampleRate = -1;
     private SpeechGrpc.SpeechStub mApi;
     private StreamObserver<StreamingRecognizeRequest> mRequestObserver;
     private final StreamObserver<StreamingRecognizeResponse> mResponseObserver
@@ -107,7 +108,12 @@ public class SpeechApiService extends Service {
                 }
             }
             if (text != null) {
+                Log.d(TAG, "calling onSpeechRecognized: " + text);
                 mCallback.onSpeechRecognized(text, isFinal);
+                if (isFinal) {
+                    finishRecognizing();
+                    startRecognizing(-1);
+                }
             }
         }
 
@@ -201,6 +207,18 @@ public class SpeechApiService extends Service {
             Log.w(TAG, "API not ready. Ignoring the request.");
             return;
         }
+        // try use the last cached sample rate if none is provided
+        if (sampleRate < 0) {
+            if (mSampleRate > 0) {
+                sampleRate = mSampleRate;
+            } else {
+                Log.w(TAG, "Cannot find a sample rate to use.");
+                return;
+            }
+
+        }
+        mSampleRate = sampleRate; // cache the last sample rate used
+
         // configure the request and response observers
         mRequestObserver = mApi.streamingRecognize(mResponseObserver);
         mRequestObserver.onNext(StreamingRecognizeRequest.newBuilder()
@@ -218,7 +236,7 @@ public class SpeechApiService extends Service {
 
     public void finishRecognizing() {
         if (mRequestObserver == null) {
-            Log.w(TAG, "mRequestObserver not ready. Ignoring the finishRecognizing() call.");
+            Log.w(TAG, "finishRecognizing, mRequestObserver not ready. Ignoring the finishRecognizing() call.");
             return;
         }
         mRequestObserver.onCompleted();
@@ -227,7 +245,7 @@ public class SpeechApiService extends Service {
 
     public void recognize(byte[] data, int size) {
         if (mRequestObserver == null) {
-            Log.w(TAG, "mRequestObserver not ready. Ignoring the recognize() call.");
+            Log.w(TAG, "recognize, mRequestObserver not ready. Ignoring the recognize() call.");
             return;
         }
         // Call the streaming recognition API
