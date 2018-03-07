@@ -22,6 +22,7 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -57,12 +58,12 @@ public class MainActivity extends AppCompatActivity
 
     private final int REQ_CODE_SPEECH_RECOG_LOCAL = 100;
 
-    private TextView mAppStatusTextView;
     private Button mStartButton;
     private Button mStopButton;
     private RecyclerView mRVSounds;
     private List<SoundRecogItem> mSoundItems = new ArrayList<>();
     private SoundRecogAdapter mSoundRecogAdapter;
+    private CheckBox mConversationMode;
 
     private SoundRecorder mVoiceRecorder;
     private SpeechApiService mSpeechApiService;
@@ -93,15 +94,14 @@ public class MainActivity extends AppCompatActivity
 
         setContentView(R.layout.activity_main);
 
-        mAppStatusTextView = (TextView) findViewById(R.id.appStatus);
-        mAppStatusTextView.setText("Ready.");
+        mConversationMode = (CheckBox) findViewById(R.id.conversationMode);
+        mConversationMode.setChecked(true);
 
         mStartButton = (Button) findViewById(R.id.startButton);
         mStartButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 handleStartButtonClick((Button) v);
-                mAppStatusTextView.setText("Listening...");
             }
         });
         mStartButton.setEnabled(true);
@@ -111,10 +111,19 @@ public class MainActivity extends AppCompatActivity
             @Override
             public void onClick(View v) {
                 handleStopButtonClick((Button) v);
-                mAppStatusTextView.setText("Ready.");
             }
         });
         mStopButton.setEnabled(false);
+
+        Button clearButton = (Button) findViewById(R.id.clearButton);
+        clearButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                mSoundItems.clear();
+                mSoundItems.add(SoundRecogItem.createItemForTextRecognized(new Date(), "Virtual Ear initialized."));
+                mSoundRecogAdapter.notifyDataSetChanged();
+            }
+        });
 
         mRVSounds = (RecyclerView) findViewById(R.id.soundsRecyclerView);
         RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(this);
@@ -127,7 +136,7 @@ public class MainActivity extends AppCompatActivity
         mSoundRecogAdapter.setOnItemClickListener(new SoundItemClickListener(this));
         mRVSounds.setAdapter(mSoundRecogAdapter);
 
-        mSoundItems.add(new SoundRecogItem("Ready for sound recognition...", new Date()));
+        mSoundItems.add(SoundRecogItem.createItemForTextRecognized(new Date(), "Virtual Ear initialized."));
         mSoundRecogAdapter.notifyDataSetChanged();
     }
 
@@ -181,44 +190,6 @@ public class MainActivity extends AppCompatActivity
         stopSpeechRec();
     }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-
-        switch (requestCode) {
-            case REQ_CODE_SPEECH_RECOG_LOCAL: {
-                if (resultCode == RESULT_OK && null != data) {
-                    ArrayList<String> result = data
-                            .getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
-                    String recogText = result.get(0);
-                    Log.d(TAG, recogText);
-                    mSoundItems.add(new SoundRecogItem(recogText, new Date()));
-                    mSoundRecogAdapter.notifyDataSetChanged();
-                }
-                break;
-            }
-            default:
-                Log.d(TAG, "unexpected request code: " + requestCode);
-                break;
-        }
-    }
-/*
-    private void startSpeechRecLocal() {
-        Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-        intent.putExtra(
-                RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
-        intent.putExtra(
-                RecognizerIntent.EXTRA_PROMPT,
-                "Starting speech recognition...");
-        try {
-            startActivityForResult(intent, REQ_CODE_SPEECH_RECOG_LOCAL);
-        } catch (ActivityNotFoundException a) {
-            Log.d(TAG, a.toString());
-        }
-    }
-*/
     private void startSpeechRec() {
         String[] permissions = new String[] {
                 Manifest.permission.RECORD_AUDIO,
@@ -247,19 +218,24 @@ public class MainActivity extends AppCompatActivity
 
     private final SpeechApiService.Callback mSpeechApiServiceCallback =
             new SpeechApiService.Callback() {
+        private String lastTextRecognized = null;
         @Override
         public void onSpeechRecognized(final String text, final boolean isFinal) {
             if (isFinal) {
                 // TODO:
             }
             if (text != null && !TextUtils.isEmpty(text)) {
+                Log.d("DEEBUG", "speed recog: " + text);
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
                         //if(isFinal) {
-                            mSoundItems.add(new SoundRecogItem(text, new Date()));
+                        if(lastTextRecognized == null || !text.equalsIgnoreCase(lastTextRecognized)) {
+                            mSoundItems.add(SoundRecogItem.createItemForTextRecognized(new Date(), text));
                             Log.d(TAG, "isFinal=" + isFinal + ", got text: " + text);
                             mSoundRecogAdapter.notifyDataSetChanged();
+                            lastTextRecognized = text;
+                        }
                         //}
                         mRVSounds.scrollToPosition(mSoundItems.size()-1);
                     }
@@ -320,7 +296,7 @@ public class MainActivity extends AppCompatActivity
                 double[] mfccFeatures = mfcc.getParameters(frames[i]);
                 Log.d(TAG, String.format("mfcc feature length: " + mfccFeatures.length));
             } */
-           // mSpeechApiService.recognize(data, size);
+            mSpeechApiService.recognize(data, size);
         }
 
         @Override
@@ -340,12 +316,11 @@ public class MainActivity extends AppCompatActivity
         }
 
         @Override
-        public void setWaveFile(final String waveFilePath) {
+        public void onWaveFilePublished(final String waveFilePath) {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    SoundRecogItem item = new SoundRecogItem("unlabeled", new Date());
-                    item.setWavFileName(waveFilePath);
+                    SoundRecogItem item = SoundRecogItem.createItemForWavFileRecorded(new Date(), waveFilePath);
                     mSoundItems.add(item);
                     mSoundRecogAdapter.notifyDataSetChanged();
                     mRVSounds.scrollToPosition(mSoundItems.size()-1);
@@ -453,15 +428,6 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-    void showStatus(final CharSequence msg) {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                mAppStatusTextView.setText(msg);
-            }
-        });
-    }
-
     private void tryTarsos() {
         AudioDispatcher dispatcher = AudioDispatcherFactory.fromDefaultMicrophone(22050,1024,0);
 
@@ -472,8 +438,8 @@ public class MainActivity extends AppCompatActivity
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        TextView text = (TextView) findViewById(R.id.appStatus);
-                        text.setText("" + pitchInHz);
+                        //TextView text = (TextView) findViewById(R.id.appStatus);
+                        //text.setText("" + pitchInHz);
                     }
                 });
             }

@@ -3,30 +3,25 @@ package com.rj10.a3;
 import java.util.Date;
 
 public class SoundRecogItem {
-    public String mStatus;
-    public String mLabel;
-    private String mWavFileName;
-    private Date mTimestamp;
+    public Date timestamp;
+    public String textRecognized;
+    public String wavFileRecorded;
+    public String wavSoundType;
 
-
-    public SoundRecogItem(String status, Date timestamp) {
-        mStatus = status;
-        mTimestamp = timestamp;
+    public static SoundRecogItem createItemForTextRecognized(Date timestamp, String textRecognized) {
+        SoundRecogItem item = new SoundRecogItem(timestamp);
+        item.textRecognized = textRecognized;
+        return item;
     }
 
-    public String getWavFileName() {
-        return mWavFileName;
+    public static SoundRecogItem createItemForWavFileRecorded(Date timestamp, String wavFileRecorded) {
+        SoundRecogItem item = new SoundRecogItem(timestamp);
+        item.wavFileRecorded = wavFileRecorded;
+        return item;
     }
 
-    public void setWavFileName(String fileName) {
-        mWavFileName = fileName;
+    private SoundRecogItem(Date timestamp) {
+        this.timestamp = timestamp;
     }
 
-    public String getLabel() {
-        return mLabel;
-    }
-
-    public Date getTimestamp() {
-        return mTimestamp;
-    }
 }

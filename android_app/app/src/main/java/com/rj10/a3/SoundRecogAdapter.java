@@ -2,6 +2,8 @@ package com.rj10.a3;
 
 import android.content.Context;
 import android.support.v7.widget.RecyclerView;
+import android.text.TextUtils;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -30,34 +32,29 @@ public class SoundRecogAdapter extends RecyclerView.Adapter<SoundRecogAdapter.Vi
     }
 
     public static class ViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
-        public TextView itemStatus;
-        public TextView wavFileTextView;
-        public TextView soundLabelTextView;
+        public SoundRecogItem item;
         public TextView timestampTextView;
-        public Button inferSoundTypeButton;
-
+        public TextView textRecognized;
+        public TextView wavFileRecorded;
+        public TextView soundLabel;
         public OnItemClickListener mClickListener;
 
         public ViewHolder(View itemView, OnItemClickListener clickListener) {
             super(itemView);
             itemView.setOnClickListener(this);
             mClickListener = clickListener;
-            itemStatus = (TextView) itemView.findViewById(R.id.itemStatus);
-            wavFileTextView = (TextView) itemView.findViewById(R.id.wavFileName);
-            soundLabelTextView = (TextView) itemView.findViewById(R.id.soundLabel);
+
             timestampTextView = (TextView) itemView.findViewById(R.id.timestamp);
-            inferSoundTypeButton = (Button) itemView.findViewById(R.id.inferSoundClass);
-            inferSoundTypeButton.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    soundLabelTextView.setText("infering...");
-                }
-            });
+            textRecognized = (TextView) itemView.findViewById(R.id.textRecognized);
+            wavFileRecorded = (TextView) itemView.findViewById(R.id.wavFileRecorded);
+            soundLabel = (TextView) itemView.findViewById(R.id.soundLabel);
         }
 
         @Override
         public void onClick(View view) {
-            mClickListener.onItemClick(wavFileTextView.getText().toString());
+            if (wavFileRecorded.getVisibility() == View.VISIBLE && !wavFileRecorded.getText().toString().isEmpty()) {
+                mClickListener.onItemClick(item.wavFileRecorded);
+            }
         }
     }
 
@@ -83,20 +80,26 @@ public class SoundRecogAdapter extends RecyclerView.Adapter<SoundRecogAdapter.Vi
     @Override
     public void onBindViewHolder(ViewHolder viewHolder, int position) {
         SoundRecogItem item = mSoundRecogItems.get(position);
-        if (item.mStatus != null) {
-            viewHolder.itemStatus.setText(item.mStatus);
+        viewHolder.item = item;
+        if (!TextUtils.isEmpty(item.wavFileRecorded)) {
+            String[] path = TextUtils.split(item.wavFileRecorded, "/");
+            Log.d("DEEBUG", "wavFilePath=" + item.wavFileRecorded);
+            for(String p : path) {
+                Log.d("DEEBUG", "path=" + p);
+            }
+            String waveFileName = path[path.length-1];
+            viewHolder.wavFileRecorded.setVisibility(View.VISIBLE);
+            viewHolder.wavFileRecorded.setText(waveFileName);
+            viewHolder.soundLabel.setVisibility(View.VISIBLE);
+            viewHolder.soundLabel.setText("unknown");
+            viewHolder.textRecognized.setVisibility(View.GONE);
         }
-        if (item.getWavFileName() != null) {
-            viewHolder.wavFileTextView.setText(item.getWavFileName());
-            viewHolder.inferSoundTypeButton.setVisibility(View.VISIBLE);
-        } else {
-            viewHolder.inferSoundTypeButton.setVisibility(View.GONE);
-        }
-        if (item.getLabel() != null) {
-            viewHolder.soundLabelTextView.setText(item.getLabel());
-        }
-        if (item.getTimestamp() != null) {
-            viewHolder.timestampTextView.setText(DATE_FORMAT.format(item.getTimestamp()));
+        viewHolder.timestampTextView.setText(DATE_FORMAT.format(item.timestamp));
+        if (item.textRecognized != null) {
+            viewHolder.textRecognized.setVisibility(View.VISIBLE);
+            viewHolder.textRecognized.setText(item.textRecognized);
+            viewHolder.wavFileRecorded.setVisibility(View.GONE);
+            viewHolder.soundLabel.setVisibility(View.GONE);
         }
     }
 

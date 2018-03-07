@@ -50,7 +50,7 @@ public class SoundRecorder {
          */
         void deebug(String msg);
 
-        void setWaveFile(String fileName);
+        void onWaveFilePublished(String fileName);
     }
 
 
@@ -131,7 +131,7 @@ public class SoundRecorder {
                 mLastVoiceHeardMillis = Long.MAX_VALUE;
                 // write the WAV file
                 mCallback.onVoiceEnd();
-                mCallback.setWaveFile(mWaveFileName);
+                mCallback.onWaveFilePublished(mWaveFileName);
             }
             if (mAudioRecord != null) {
                 mAudioRecord.stop();
