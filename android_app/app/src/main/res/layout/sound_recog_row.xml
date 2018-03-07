@@ -22,7 +22,7 @@
 
         <TextView
             android:id="@+id/wavFileRecorded"
-            android:textSize="24dp"
+            android:textSize="16dp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" />
 
@@ -30,7 +30,7 @@
             android:id="@+id/soundLabel"
             android:paddingLeft="12dp"
             android:layout_gravity="right"
-            android:textSize="24dp"
+            android:textSize="16dp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" />
     </LinearLayout>
