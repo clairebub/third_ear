@@ -57,6 +57,26 @@ def eval_input_fn(features, labels, batch_size):
     dataset = dataset.batch(batch_size)
     return dataset
 
+def load_data_2(folders):
+    """Return the urban sound data set as ndarrays (x, y).
+    """
+    features, labels = np.zeros(0), np.zeros(0, dtype=int)
+    for folder_id in folders:
+        folder = "fold%d"%(folder_id)
+        for fn in glob.glob(os.path.join(RAW_DATA_DIR, folder, "*.wav")):
+            just_fn_name = fn.split('/')[-1]
+            class_id = just_fn_name.split('-')[1]
+            #print("fn", fn, just_fn_name, class_id)
+            mfcc2 = _extract_features_from_one_file(fn)
+            if mfcc2 is None:
+                continue
+            features = np.append(features, mfcc2)
+            labels= np.append(labels, class_id)
+    features = features.reshape(-1, N_MFCC)
+    return features, labels
+
+    pass 
+
 def load_data(folders):
     """Returns the urban sound data set as dataframes (x, y).
     """
