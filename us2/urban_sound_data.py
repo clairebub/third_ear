@@ -71,11 +71,20 @@ def load_data_2(folders):
             if mfcc2 is None:
                 continue
             features = np.append(features, mfcc2)
-            labels= np.append(labels, class_id)
+            labels= np.append(labels, int(class_id))
     features = features.reshape(-1, N_MFCC)
+    #labels = labels.reshape(-1, 1)
+    #print("features.shape", features.shape, "labels.shape", labels.shape)
+    labels = one_hot_encode(labels)
     return features, labels
 
-    pass 
+def one_hot_encode(labels):
+    n_labels = len(labels)
+    if np.max(labels) >= len(SOUND_CLASSES):
+        raise ValueError('label.max=%d, greater than n_classes=%d'%(np.max(labels), n_classes))
+    x = np.zeros((n_labels, len(SOUND_CLASSES)))
+    x[np.arange(n_labels), labels] = 1
+    return x
 
 def load_data(folders):
     """Returns the urban sound data set as dataframes (x, y).
