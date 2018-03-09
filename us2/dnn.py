@@ -4,7 +4,7 @@ import argparse
 import numpy as np
 import random
 import tensorflow as tf
-import time 
+import time
 
 import urban_sound_data
 
@@ -39,7 +39,8 @@ def build_dnn_model():
     W = tf.Variable(tf.random_normal([n_hidden_units_two, n_classes], mean=0, stddev=sd), name='w')
     b = tf.Variable(tf.random_normal([n_classes], mean=0, stddev=sd), name='b')
     logits = tf.matmul(h_2, W) + b
-    y_pred = tf.nn.softmax(tf.matmul(h_2, W) + b)
+    #y_pred = tf.nn.softmax(tf.matmul(h_2, W) + b)
+    y_pred = tf.nn.softmax(logits, name="pred")
     return logits, y_pred
 
 def _shuffle_trainset(train_x, train_y):
@@ -51,27 +52,15 @@ def _shuffle_trainset(train_x, train_y):
         train_y_shuffled.append(train_y[i])
     return np.array(train_x_shuffled), np.array(train_y_shuffled)
 
-def one_hot_encode(labels):
-    print("one_hot", labels.shape, labels)
-    n_labels = len(labels)
-    if np.max(labels) >= n_classes:
-        raise ValueError('label.max=%d, greater than n_classes=%d'%(np.max(labels), n_classes))
-    one_hot_encode = np.zeros((n_labels, n_classes))
-    one_hot_encode[np.arange(n_labels), labels] = 1
-
-    return one_hot_encode
-
 def main2(argv):
     args = parser.parse_args(argv[1:])
-    train_x, train_y = urban_sound_data.load_data2([1, 2, 3, 4, 5, 6, 7, 8])
-    train_y = one_hot_encode(train_y)
+    train_x, train_y = urban_sound_data.load_data_2([1])
     print("train shapes", train_x.shape, train_y.shape)
-    test_x, test_y = urban_sound_data.load_data([9])
-    test_y = one_hot_encode(test_y)
+    test_x, test_y = urban_sound_data.load_data_2([9])
     print("test shapes", test_x.shape, test_y.shape)
 
     logits, y_ = build_dnn_model()
-    loss_op = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(
+    loss_op = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(
         logits=logits, labels=Y))
     optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(loss_op)
     correct_prediction = tf.equal(tf.argmax(y_, 1), tf.argmax(Y, 1))
@@ -80,7 +69,7 @@ def main2(argv):
 
     timestr = time.strftime("%Y%m%d-%H%M%S")
     export_dir = '/tmp/v_ear/export-%s' % timestr
-    model_dir = './my_model'
+    model_dir = export_dir + '/my_model'
     builder = tf.saved_model.builder.SavedModelBuilder(export_dir)
     saver = tf.train.Saver()
     with tf.Session() as sess:
@@ -95,7 +84,7 @@ def main2(argv):
                 batch_y = train_y_shuffled[offset:(offset + batch_size), :]
                 _, cost = sess.run([optimizer, loss_op], feed_dict={X: batch_x, Y: batch_y})
                 cost_history = np.append(cost_history, cost)
-            print("test_x.shape", test_x.shape, "test_y.shape", test_y.shape)
+            #print("test_x.shape", test_x.shape, "test_y.shape", test_y.shape)
             accuracy_at_epoch = sess.run(accuracy, feed_dict={X: test_x, Y: test_y})
             print("done epoch %d, loss=%.3f, accuracy=%.3f" % (epoch, cost_history[-1], accuracy_at_epoch))
 
@@ -125,7 +114,7 @@ def main(argv):
     #print("test_y\n", test_y)
     # Feature columns describe how to use the input.
     mfcc_feature_column = tf.feature_column.numeric_column(
-        key="mfcc", 
+        key="mfcc",
         shape=urban_sound_data.N_MFCC)
     feature_columns = [mfcc_feature_column]
     #for key in train_x.keys():
