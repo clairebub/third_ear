@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
+import android.content.res.AssetManager;
 import android.media.MediaPlayer;
 import android.os.IBinder;
 import android.os.Looper;
@@ -43,6 +44,9 @@ import be.tarsos.dsp.pitch.PitchDetectionHandler;
 import be.tarsos.dsp.pitch.PitchDetectionResult;
 import be.tarsos.dsp.pitch.PitchProcessor;
 
+//import org.tensorflow.Operation;
+import org.tensorflow.contrib.android.TensorFlowInferenceInterface;
+
 //
 // An app that monitors the ambient sound and do speech detection and outputs the results
 // on the screen.
@@ -67,6 +71,9 @@ public class MainActivity extends AppCompatActivity
 
     private SoundRecorder mVoiceRecorder;
     private SpeechApiService mSpeechApiService;
+
+    private TensorFlowInferenceInterface inferenceInterface;
+    private static final String MODEL_FILE = "file:///android_asset/img/frozen_vear_model.pb";
 
     /** Defines callbacks for service binding, passed to bindService() */
     private final ServiceConnection mSpeechApiServiceConnection = new ServiceConnection() {
@@ -138,6 +145,19 @@ public class MainActivity extends AppCompatActivity
 
         mSoundItems.add(SoundRecogItem.createItemForTextRecognized(new Date(), "Virtual Ear is ready to use."));
         mSoundRecogAdapter.notifyDataSetChanged();
+
+        final AssetManager assetManager = this.getAssets();
+        Log.d(TAG, "checking assets");
+        try {
+            String[] pList = assetManager.list("img");
+            for (String p: pList) {
+                Log.d(TAG, "deebug p=" + p);
+            }
+        } catch (IOException ex) {
+            Log.d(TAG, ex.getMessage());
+        }
+
+        inferenceInterface = new TensorFlowInferenceInterface(assetManager, MODEL_FILE);
     }
 
     /**
