@@ -25,7 +25,7 @@ public class SoundRecogAdapter extends RecyclerView.Adapter<SoundRecogAdapter.Vi
     // Define the listener interface
     private OnItemClickListener mItemClickListener;
     public interface OnItemClickListener {
-        void onItemClick(String waveFileName);
+        void onItemClick(SoundRecogItem item);
     }
     public void setOnItemClickListener(OnItemClickListener listener) {
         this.mItemClickListener = listener;
@@ -37,6 +37,7 @@ public class SoundRecogAdapter extends RecyclerView.Adapter<SoundRecogAdapter.Vi
         public TextView textRecognized;
         public TextView wavFileRecorded;
         public TextView soundLabel;
+        public Button inferButton;
         public OnItemClickListener mClickListener;
 
         public ViewHolder(View itemView, OnItemClickListener clickListener) {
@@ -48,12 +49,13 @@ public class SoundRecogAdapter extends RecyclerView.Adapter<SoundRecogAdapter.Vi
             textRecognized = (TextView) itemView.findViewById(R.id.textRecognized);
             wavFileRecorded = (TextView) itemView.findViewById(R.id.wavFileRecorded);
             soundLabel = (TextView) itemView.findViewById(R.id.soundLabel);
+            inferButton = (Button) itemView.findViewById(R.id.inferButton);
         }
 
         @Override
         public void onClick(View view) {
             if (wavFileRecorded.getVisibility() == View.VISIBLE && !wavFileRecorded.getText().toString().isEmpty()) {
-                mClickListener.onItemClick(item.wavFileRecorded);
+                mClickListener.onItemClick(item);
             }
         }
     }
@@ -91,7 +93,12 @@ public class SoundRecogAdapter extends RecyclerView.Adapter<SoundRecogAdapter.Vi
             viewHolder.wavFileRecorded.setVisibility(View.VISIBLE);
             viewHolder.wavFileRecorded.setText(waveFileName);
             viewHolder.soundLabel.setVisibility(View.VISIBLE);
-            viewHolder.soundLabel.setText("unknown");
+            if (item.wavSoundType != null) {
+                viewHolder.soundLabel.setText("unknown");
+            } else {
+                viewHolder.soundLabel.setText(item.wavSoundType);
+            }
+            viewHolder.inferButton.setVisibility(View.VISIBLE);
             viewHolder.textRecognized.setVisibility(View.GONE);
         }
         viewHolder.timestampTextView.setText(DATE_FORMAT.format(item.timestamp));
@@ -100,6 +107,7 @@ public class SoundRecogAdapter extends RecyclerView.Adapter<SoundRecogAdapter.Vi
             viewHolder.textRecognized.setText(item.textRecognized);
             viewHolder.wavFileRecorded.setVisibility(View.GONE);
             viewHolder.soundLabel.setVisibility(View.GONE);
+            viewHolder.inferButton.setVisibility(View.GONE);
         }
     }
 
