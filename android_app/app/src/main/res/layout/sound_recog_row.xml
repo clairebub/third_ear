@@ -26,6 +26,12 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" />
 
+        <Button
+            android:id="@+id/inferButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="infer"/>
+
         <TextView
             android:id="@+id/soundLabel"
             android:paddingLeft="12dp"

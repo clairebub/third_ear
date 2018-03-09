@@ -421,7 +421,6 @@ public class MFCC {
         System.out.println("MFCC parameters:");
         for (int i = 0; i < dparameters.length; i++) {
             System.out.print(" " + dparameters[i]);
-
         }
 
     }

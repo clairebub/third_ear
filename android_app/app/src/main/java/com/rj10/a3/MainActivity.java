@@ -44,7 +44,7 @@ import be.tarsos.dsp.pitch.PitchDetectionHandler;
 import be.tarsos.dsp.pitch.PitchDetectionResult;
 import be.tarsos.dsp.pitch.PitchProcessor;
 
-//import org.tensorflow.Operation;
+import org.tensorflow.Operation;
 import org.tensorflow.contrib.android.TensorFlowInferenceInterface;
 
 //
@@ -73,7 +73,23 @@ public class MainActivity extends AppCompatActivity
     private SpeechApiService mSpeechApiService;
 
     private TensorFlowInferenceInterface inferenceInterface;
+    private Operation operation;
+
     private static final String MODEL_FILE = "file:///android_asset/img/frozen_vear_model.pb";
+    private static final String INPUT_NAME = "X";
+    private static final String OUTPUT_NAME = "pred";
+    private static final String[] SOUND_CLASSES = {
+            "air_conditioner",
+            "car_horn",
+            "children_playing",
+            "dog_bark",
+            "drilling",
+            "engine_idling",
+            "gun_shot",
+            "jackhammer",
+            "siren",
+            "street_music",
+    };
 
     /** Defines callbacks for service binding, passed to bindService() */
     private final ServiceConnection mSpeechApiServiceConnection = new ServiceConnection() {
@@ -158,6 +174,27 @@ public class MainActivity extends AppCompatActivity
         }
 
         inferenceInterface = new TensorFlowInferenceInterface(assetManager, MODEL_FILE);
+        operation = inferenceInterface.graphOperation(OUTPUT_NAME);
+        final int numClasses = (int) operation.output(0).shape().size(1);
+        Log.d(TAG, "numClasses=" + numClasses);
+        float[] xx = new float[40];
+        for (int i = 0; i < 40; i++) {
+            xx[i] = 1.0F*i;
+        }
+        float[] yy = new float[10];
+        for (int i = 0; i < 10; i++) {
+            yy[i] = 0;
+        }
+
+        inferenceInterface.feed(INPUT_NAME, xx, 1, 40);
+        boolean logStats = false;
+        String[] outputNames = new String[] {OUTPUT_NAME};
+        inferenceInterface.run(outputNames, logStats);
+        inferenceInterface.fetch(OUTPUT_NAME, yy);
+        for (int i = 0; i < 10; i++) {
+            Log.d(TAG, "yy=" + yy[i]);
+        }
+
     }
 
     /**
@@ -483,6 +520,10 @@ public class MainActivity extends AppCompatActivity
         mediaPlayer.start();
     }
 
+    private String getSoundClass() {
+        return SOUND_CLASSES[0];
+    }
+
     class SoundItemClickListener implements SoundRecogAdapter.OnItemClickListener {
         private final Context mContext;
         private MediaPlayer mMediaPlayer;
@@ -492,7 +533,8 @@ public class MainActivity extends AppCompatActivity
         }
 
         @Override
-        public void onItemClick(String waveFileName) {
+        public void onItemClick(SoundRecogItem item) {
+            String waveFileName = item.wavFileRecorded;
             Log.w(TAG, "clicked file " + waveFileName);
             try {
                 if (mMediaPlayer != null) {
@@ -512,6 +554,11 @@ public class MainActivity extends AppCompatActivity
                 Toast.makeText(mContext, waveFileName + " not found", Toast.LENGTH_SHORT).show();
                 Log.e(TAG, ex.toString());
             }
+
+            // TODO: run inference
+            String soundClass = getSoundClass();
+            item.wavSoundType = soundClass;
+            mSoundRecogAdapter.notifyDataSetChanged();
         }
     }
 }
