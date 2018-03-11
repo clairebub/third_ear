@@ -33,7 +33,31 @@ SOUND_CLASSES = {
     9 : 'street_music',
 }
 
-def load_data(folders):
+def train_input_fn(features, labels, batch_size):
+    """An input function for training"""
+    # Convert the inputs to a Dataset.
+    dataset = tf.data.Dataset.from_tensor_slices((dict(features), labels))
+    buffer_size = features.shape[0]
+    dataset = dataset.shuffle(buffer_size).repeat().batch(batch_size)
+    return dataset
+
+def eval_input_fn(features, labels, batch_size):
+    """An input function for evaluation or prediction"""
+    features=dict(features)
+    if labels is None:
+        # No labels, use only features.
+        inputs = features
+    else:
+        inputs = (features, labels)
+
+    # Convert the inputs to a Dataset.
+    dataset = tf.data.Dataset.from_tensor_slices(inputs)
+    # Batch the examples
+    assert batch_size is not None, "batch_size must not be None"
+    dataset = dataset.batch(batch_size)
+    return dataset
+
+def load_data_2(folders):
     """Return the urban sound data set as ndarrays (x, y).
     """
     features, labels = np.zeros(0), np.zeros(0, dtype=int)
@@ -61,6 +85,32 @@ def one_hot_encode(labels):
     x = np.zeros((n_labels, len(SOUND_CLASSES)))
     x[np.arange(n_labels), labels] = 1
     return x
+
+def load_data(folders):
+    """Returns the urban sound data set as dataframes (x, y).
+    """
+    features, labels = np.zeros(0), np.zeros(0, dtype=int)
+    for folder_id in folders:
+        folder = "fold%d"%(folder_id)
+        for fn in glob.glob(os.path.join(RAW_DATA_DIR, folder, "*.wav")):
+            just_fn_name = fn.split('/')[-1]
+            class_id = just_fn_name.split('-')[1]
+            #print("fn", fn, just_fn_name, class_id)
+            mfcc2 = _extract_features_from_one_file(fn)
+            if mfcc2 is None:
+                continue
+            features = np.append(features, mfcc2)
+            labels= np.append(labels, class_id)
+    # turn features into DataFrame
+    features = features.reshape(-1, N_MFCC)
+    col_names = []
+    for i in range(N_MFCC):
+        col_name = "mfcc_%02d"%i
+        col_names.append(col_name)
+    features = pd.DataFrame(data = features, columns = col_names)
+    # turn labels into DataFrame
+    labels = pd.DataFrame(data = labels, dtype=np.int64, columns = ["y"])
+    return features, labels
 
 def _extract_features_from_one_file(fn, verbose=False):
     y, sr = sf.read(fn)

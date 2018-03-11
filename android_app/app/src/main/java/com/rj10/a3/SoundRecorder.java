@@ -69,7 +69,7 @@ public class SoundRecorder {
     private static final int AUDIO_ENCODING = AudioFormat.ENCODING_PCM_16BIT;
     private static final int AMPLITUDE_THRESHOLD = 1500;
     private static final int SPEECH_TIMEOUT_MILLIS = 2000;
-    private static final int MAX_SPEECH_LENGTH_MILLIS = 30 * 1000;
+    private static final int MAX_SPEECH_LENGTH_MILLIS = 2 * 1000;
 
     private Thread mThread;
 
