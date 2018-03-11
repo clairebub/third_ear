@@ -10,7 +10,6 @@ import android.content.res.AssetManager;
 import android.media.MediaPlayer;
 import android.os.IBinder;
 import android.os.Looper;
-import android.speech.RecognizerIntent;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -24,14 +23,10 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
-import android.widget.TextView;
 import android.widget.Toast;
 
-import org.w3c.dom.Text;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -175,26 +170,27 @@ public class MainActivity extends AppCompatActivity
 
         inferenceInterface = new TensorFlowInferenceInterface(assetManager, MODEL_FILE);
         operation = inferenceInterface.graphOperation(OUTPUT_NAME);
+    }
+
+    private String inferSoundClass(final float[] mfcc) {
         final int numClasses = (int) operation.output(0).shape().size(1);
         Log.d(TAG, "numClasses=" + numClasses);
-        float[] xx = new float[40];
-        for (int i = 0; i < 40; i++) {
-            xx[i] = 1.0F*i;
-        }
         float[] yy = new float[10];
         for (int i = 0; i < 10; i++) {
             yy[i] = 0;
         }
-
-        inferenceInterface.feed(INPUT_NAME, xx, 1, 40);
+        inferenceInterface.feed(INPUT_NAME, mfcc, 1, 40);
         boolean logStats = false;
         String[] outputNames = new String[] {OUTPUT_NAME};
         inferenceInterface.run(outputNames, logStats);
         inferenceInterface.fetch(OUTPUT_NAME, yy);
+        int classIndex = -1;
         for (int i = 0; i < 10; i++) {
-            Log.d(TAG, "yy=" + yy[i]);
+            if (classIndex < 0 || yy[i] > yy[classIndex]) {
+                classIndex = i;
+            }
         }
-
+        return SOUND_CLASSES[classIndex];
     }
 
     /**
@@ -336,29 +332,6 @@ public class MainActivity extends AppCompatActivity
                 Log.e(TAG, "sampleRate is -1 when onVoice");
                 return;
             }
-            /*
-            // get the frames from the audio buffer
-            double[][] frames = getAudioFrames(data, size);
-
-            int nnumberofFilters = 24;
-            int nlifteringCoefficient = 22;
-            boolean oisLifteringEnabled = true;
-            boolean oisZeroThCepstralCoefficientCalculated = true;
-            int nnumberOfMFCCParameters = 12; //without considering 0-th
-            double dsamplingFrequency = 8000.0;
-            int nFFTLength = 512;
-
-            MFCC mfcc = new MFCC(nnumberOfMFCCParameters,
-                    dsamplingFrequency,
-                    nnumberofFilters,
-                    nFFTLength,
-                    oisLifteringEnabled,
-                    nlifteringCoefficient,
-                    oisZeroThCepstralCoefficientCalculated);
-            for (int i = 0; i < frames.length; i++) {
-                double[] mfccFeatures = mfcc.getParameters(frames[i]);
-                Log.d(TAG, String.format("mfcc feature length: " + mfccFeatures.length));
-            } */
             mSpeechApiService.recognize(data, size);
         }
 
@@ -382,64 +355,18 @@ public class MainActivity extends AppCompatActivity
         }
 
         @Override
-        public void onWaveFilePublished(final String waveFilePath) {
+        public void onWaveFilePublished(final String waveFilePath, final float[] mfcc) {
+            // TODO: run inference
+            final String soundClass = getSoundClass();
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    SoundRecogItem item = SoundRecogItem.createItemForWavFileRecorded(new Date(), waveFilePath);
+                    SoundRecogItem item = SoundRecogItem.createItemForWavFileRecorded(new Date(), waveFilePath, soundClass);
                     mSoundItems.add(item);
                     mSoundRecogAdapter.notifyDataSetChanged();
                     mRVSounds.scrollToPosition(mSoundItems.size()-1);
                 }
             });
-        }
-
-        private double[][] getAudioFrames(byte[] data, int size) {
-            int totalSamples = size / 2;
-            int frameDuration = 40; // 40 ms
-            int samplesPerFrame = (int) (mSampleRate / 1000 * frameDuration);
-            int stride_length = samplesPerFrame / 4;
-            int totalFrames = totalSamples / samplesPerFrame;
-            Log.d(TAG, String.format("total frames=%d, samplesPerFrame=%d, stride_length=%d", totalFrames, samplesPerFrame, stride_length));
-
-            ByteBuffer byteBuffer = ByteBuffer.wrap(data, 0, size);
-            if (ByteOrder.nativeOrder().equals(ByteOrder.BIG_ENDIAN)) {
-                byteBuffer.order(ByteOrder.BIG_ENDIAN); // assume it's little endian
-                Log.d(TAG, "big endian");
-            } else {
-                byteBuffer.order(ByteOrder.LITTLE_ENDIAN); // assume it's little endian
-                Log.d(TAG, "little endian");
-            }
-
-            double[] pcmValues = new double[totalSamples];
-            int count[] = new int[100];
-            for (int i = 0; i < totalSamples; i++) {
-                pcmValues[i] = 1.0 * byteBuffer.getInt(i) / Integer.MAX_VALUE;
-                int x = (int) (100 * (pcmValues[i] + 1)/2.0) - 1;
-                if (x < 0) {
-                    x = 0;
-                }
-                count[x] += 1;
-            }
-            String s = "";
-            for (int i = 0; i < 100; i++) {
-                s += ", " + count[i];
-            }
-            Log.d(TAG, String.format("count=%s", s));
-
-            double[][] frames = new double[totalFrames][samplesPerFrame];
-            for (int i = 0; i < totalFrames; i++) {
-                int offset = i * samplesPerFrame;
-                for (int j = 0; j < samplesPerFrame; j++) {
-                    int x = offset + j;
-                    if (x >= totalSamples) {
-                        frames[i][j] = 0;
-                    } else {
-                        frames[i][j] = pcmValues[x];
-                    }
-                }
-            }
-            return frames;
         }
     };
 
@@ -554,11 +481,6 @@ public class MainActivity extends AppCompatActivity
                 Toast.makeText(mContext, waveFileName + " not found", Toast.LENGTH_SHORT).show();
                 Log.e(TAG, ex.toString());
             }
-
-            // TODO: run inference
-            String soundClass = getSoundClass();
-            item.wavSoundType = soundClass;
-            mSoundRecogAdapter.notifyDataSetChanged();
         }
     }
 }

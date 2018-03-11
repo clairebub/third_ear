@@ -10,12 +10,21 @@ import android.telecom.Call;
 import android.util.Log;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOError;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+
+import be.tarsos.dsp.AudioDispatcher;
+import be.tarsos.dsp.AudioEvent;
+import be.tarsos.dsp.AudioProcessor;
+import be.tarsos.dsp.mfcc.MFCC;
+import be.tarsos.dsp.io.TarsosDSPAudioFormat;
+import be.tarsos.dsp.io.UniversalAudioInputStream;
 
 /**
  * An object that utilized the AudioRecord interface to access android's audio records. It used
@@ -50,7 +59,7 @@ public class SoundRecorder {
          */
         void deebug(String msg);
 
-        void onWaveFilePublished(String fileName);
+        void onWaveFilePublished(String fileName, float[] mfcc);
     }
 
 
@@ -94,6 +103,9 @@ public class SoundRecorder {
      * speech recognition.
      */
     private class SoundRecorderRunnable implements Runnable {
+        private static final int FREQUENCY_MAX = 11000;
+        private static final int FREQUENCY_MIN = 20;
+        private static final int N_MFCC = 40;
         private final Callback mCallback;
         private AudioRecord mAudioRecord;
         private byte[] mBuffer;
@@ -103,6 +115,7 @@ public class SoundRecorder {
         /** The timestamp when the current voice is started. */
         private long mVoiceStartedMillis;
         private String mWaveFileName;
+        private final float[] mfcc_avg = new float[N_MFCC];
 
         public SoundRecorderRunnable(Callback callback) {
             mCallback = callback;
@@ -131,7 +144,7 @@ public class SoundRecorder {
                 mLastVoiceHeardMillis = Long.MAX_VALUE;
                 // write the WAV file
                 mCallback.onVoiceEnd();
-                mCallback.onWaveFilePublished(mWaveFileName);
+                mCallback.onWaveFilePublished(mWaveFileName, mfcc_avg.clone());
             }
             if (mAudioRecord != null) {
                 mAudioRecord.stop();
@@ -255,6 +268,56 @@ public class SoundRecorder {
                 nBytesLeft -= nBytesRead;
             }
             outputStream.close();
+
+            // adding the MFCC and classification
+            InputStream inStream = new FileInputStream(wavFile);
+            TarsosDSPAudioFormat tarsosDSPAudioFormat = new TarsosDSPAudioFormat(
+                    SAMPLE_RATE, 16, 1, true, false);
+            UniversalAudioInputStream tarsosAudioInputStream = new UniversalAudioInputStream(
+                    inStream, tarsosDSPAudioFormat);
+            tarsosAudioInputStream.skip(46); // skip the size of wav header
+
+            int samplesPerFrame = SAMPLE_RATE / 25;
+            int framesOverlap = samplesPerFrame / 4 * 3;
+
+            AudioDispatcher dispatcher = new AudioDispatcher(
+                    tarsosAudioInputStream, samplesPerFrame, framesOverlap);
+
+            int n_mels = samplesPerFrame / 10;
+            final MFCC mfcc = new MFCC(
+                    samplesPerFrame,
+                    SAMPLE_RATE,
+                    N_MFCC,
+                    n_mels,
+                    FREQUENCY_MIN,
+                    FREQUENCY_MAX);
+            for(int i = 0; i < N_MFCC; i++) {
+                mfcc_avg[i] = 0;
+            }
+
+            dispatcher.addAudioProcessor(new AudioProcessor() {
+                int iFrames = 0;
+
+                @Override
+                public boolean process(AudioEvent audioEvent) {
+                    mfcc.process(audioEvent);
+                    float[] xx = mfcc.getMFCC();
+                    for(int i = 0; i < N_MFCC; i++) {
+                        mfcc_avg[i] += xx[i];
+                    }
+                    iFrames++;
+                    return true;
+                }
+
+                @Override
+                public void processingFinished() {
+                    for (int i = 0; i < N_MFCC; i++) {
+                        mfcc_avg[i] /= iFrames;
+                    }
+                }
+            });
+            dispatcher.run();
+            // mfcc_avg is good
         }
 
         private boolean isHearingVoice(byte[] buffer, int size) {
