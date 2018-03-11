@@ -112,8 +112,10 @@ def load_data(folders):
     labels = pd.DataFrame(data = labels, dtype=np.int64, columns = ["y"])
     return features, labels
 
-def _extract_features_from_one_file(fn):
+def _extract_features_from_one_file(fn, verbose=False):
     y, sr = sf.read(fn)
+    if verbose:
+        print("sr", sr, "y.shape", y.shape, "audio length in seconds", y.shape[0]/sr)
     if sr < FREQUENCY_MAX * 2:
         #print("WARNING: sample rate %d is not enough to support max frequency %d" % (sr, FREQUENCY_MAX))
         return None
@@ -122,11 +124,18 @@ def _extract_features_from_one_file(fn):
         return None
     if len(y.shape) > 1:
         y = y[:, 0] # retain only the first channel as if it's mono
-    y = y[:DURATION*sr]
-    mfcc = _compute_mfcc(y, sr)
+    #y = y[:DURATION*sr]
+    mfcc = _compute_mfcc(y, sr, verbose)
+    if verbose:
+        print("mfcc.shape", mfcc.shape, "from samples of shape", y.shape)
     # print("mfcc.shape", mfcc.shape)
     # we use features as average of mfcc over the time of the signal
     mfcc2 = np.mean(mfcc.T, axis=0)
+    if verbose:
+        print("mfcc2.shape", mfcc2.shape)
+    if verbose:
+        for x in mfcc2:
+            print(x)
     return mfcc2
 
 # mfcc
@@ -152,7 +161,7 @@ def _extract_features_from_one_file(fn):
 #    Nyquist frequency, which is SR/2. The width of each frequency bin is thus:
 #    Nyquist_Frequency/N_FFT_BINS = SR/N_FFT, i.e. number of frames per second
 #    as if there's no overlapping
-def _compute_mfcc(y, sr):
+def _compute_mfcc(y, sr, verbose=False):
     #self.print_array_stats(y, "y")
     # num_frequency_bins = 1 + n_fft/2
     # the frequency bins are [0, ..., SR/2]
@@ -161,6 +170,8 @@ def _compute_mfcc(y, sr):
     # what's a good N_FFT? a window for about 40 ms, which is about
     # SR / 25 samples
     n_fft = sr // 25
+    if verbose:
+        print("n_fft", n_fft)
     D = librosa.stft(y, n_fft=n_fft) # Get the STFT matrix
     D = np.abs(D) # The magnitude spectrum
     D = D**2  # The power spectrum
@@ -176,6 +187,8 @@ def _compute_mfcc(y, sr):
     # N_FFT at 2048 and N_MELS at 128, so I just devide by 10
     # should be roughly around 100 to 200
     n_mels = n_fft // 10
+    if verbose:
+        print("n_mels", n_mels)
     S = librosa.feature.melspectrogram(
         sr=sr,
         S=D,
@@ -191,4 +204,7 @@ def _compute_mfcc(y, sr):
     return mfcc
 
 if __name__ == "__main__":
-    load_features()
+    if len(sys.argv) < 2:
+        print("usage: %s %s" % (sys.argv[0], "<sound_file_name>"))
+        sys.exit(1)
+    _extract_features_from_one_file(sys.argv[1], verbose=True)
