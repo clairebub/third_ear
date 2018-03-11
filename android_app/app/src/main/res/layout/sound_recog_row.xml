@@ -9,8 +9,15 @@
         android:id="@+id/timestamp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content" />
+
     <TextView
         android:id="@+id/textRecognized"
+        android:textSize="24dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+    <TextView
+        android:id="@+id/wavFileRecorded"
         android:textSize="24dp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content" />
@@ -19,25 +26,18 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal">
+            <TextView
+                android:id="@+id/soundLabelLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="24dp"
+                android:text="Sound Class: " />
 
-        <TextView
-            android:id="@+id/wavFileRecorded"
-            android:textSize="16dp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
-
-        <Button
-            android:id="@+id/inferButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="infer"/>
-
-        <TextView
-            android:id="@+id/soundLabel"
-            android:paddingLeft="12dp"
-            android:layout_gravity="right"
-            android:textSize="16dp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
+            <TextView
+                android:id="@+id/soundLabel"
+                android:textSize="24dp"
+                android:textStyle="bold|italic"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
     </LinearLayout>
 </LinearLayout>

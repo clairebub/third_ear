@@ -18,7 +18,7 @@ import java.io.*;
 public class MFCCFeatures {
 	//	private static int counter = 0;
 	//@Test
-	public List<float[]> Test() throws FileNotFoundException {
+	public List<float[]> Test() throws IOException {
 		final String path = "data/7061-6-0-0.wav";
 		final int SR = 44100;
 		final int SAMPLE_SIZE_IN_BITS = 16;
@@ -34,6 +34,7 @@ public class MFCCFeatures {
 				SR, SAMPLE_SIZE_IN_BITS, numChannels, isSigned, isBigEndian);
 		UniversalAudioInputStream audioInputStream = new UniversalAudioInputStream(
 				inStream, audioFormat);
+		audioInputStream.skip(46); // skip the size of wav header
 
 		int samplesPerFrame = SR / 25;
 		int framesOverlap = samplesPerFrame / 4 * 3;
@@ -65,7 +66,6 @@ public class MFCCFeatures {
 
 			@Override
 			public boolean process(AudioEvent audioEvent) {
-
 				mfcc.process(audioEvent);
 				float[] xx = mfcc.getMFCC();
 				for(int i = 0; i < N_MFCC; i++) {
@@ -74,13 +74,14 @@ public class MFCCFeatures {
 				iFrames++;
 				return true;
 			}
-			
+
 			@Override
 			public void processingFinished() {
 				for (int i = 0; i < N_MFCC; i++) {
 					mfcc_avg[i] /= iFrames;
-					System.out.println(mfcc_avg[i]);
+					// System.out.println(mfcc_avg[i]);
 				}
+				System.out.println("iFrames=" + iFrames);
 			}
 		});
 
@@ -89,18 +90,9 @@ public class MFCCFeatures {
 		return mfccList;
 	}
 
-	public static void main(String[] args) throws FileNotFoundException {
-		for (String arg: args) {
-			System.out.println("arg: " + arg);
-		}
+	public static void main(String[] args) throws IOException {
+		System.out.println("Main thread name: " + Thread.currentThread().getName());
 		MFCCFeatures a = new MFCCFeatures();
-		List<float[]> mfcc = a.Test();
-//		System.out.println():
-		System.out.println("mfcc size: " + mfcc.size());
-		System.out.println("mfcc values: ");
-		for (float[] x: mfcc) {
-			//System.out.println("deebug: " + x.length);
-			//System.out.println(Arrays.toString(x));
-		}
+		a.Test();
 	}
 }

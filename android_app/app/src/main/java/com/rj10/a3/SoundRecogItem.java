@@ -14,9 +14,10 @@ public class SoundRecogItem {
         return item;
     }
 
-    public static SoundRecogItem createItemForWavFileRecorded(Date timestamp, String wavFileRecorded) {
+    public static SoundRecogItem createItemForWavFileRecorded(Date timestamp, String wavFileRecorded, String soundClass) {
         SoundRecogItem item = new SoundRecogItem(timestamp);
         item.wavFileRecorded = wavFileRecorded;
+        item.wavSoundType = soundClass;
         return item;
     }
 
