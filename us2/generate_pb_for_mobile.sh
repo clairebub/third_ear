@@ -2,7 +2,7 @@
 
 TOOLS_DIR=${HOME}/Downloads/tensorflow/tensorflow/python/tools
 
-model_dir="/tmp/v_ear/export-20180308-220419"
+model_dir="/tmp/v_ear/export-20180310-190433"
 echo "model_dir=${model_dir}"
 
 cd ${TOOLS_DIR}

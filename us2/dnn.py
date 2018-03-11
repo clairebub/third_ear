@@ -15,7 +15,7 @@ n_classes = len(urban_sound_data.SOUND_CLASSES)
 n_hidden_units_one = 320
 n_hidden_units_two = 320
 learning_rate = 0.01
-num_of_epochs = 20
+num_of_epochs = 200
 batch_size = 100
 
 X = tf.placeholder(tf.float32, [None, n_dim], name='X')

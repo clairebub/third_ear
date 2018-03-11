@@ -69,7 +69,7 @@ public class SoundRecorder {
     private static final int AUDIO_ENCODING = AudioFormat.ENCODING_PCM_16BIT;
     private static final int AMPLITUDE_THRESHOLD = 1500;
     private static final int SPEECH_TIMEOUT_MILLIS = 2000;
-    private static final int MAX_SPEECH_LENGTH_MILLIS = 2 * 1000;
+    private static final int MAX_SPEECH_LENGTH_MILLIS = 30 * 1000;
 
     private Thread mThread;
 
@@ -134,17 +134,11 @@ public class SoundRecorder {
          * end the currently ongoing utterance and releases the resources
          */
         private void end() {
-            try {
-                writeWAVFile();
-            } catch (IOException ex) {
-                Log.e(TAG, ex.toString());
-            }
-
+            flushAudioBuffer();
             if (mLastVoiceHeardMillis != Long.MAX_VALUE) {
                 mLastVoiceHeardMillis = Long.MAX_VALUE;
                 // write the WAV file
                 mCallback.onVoiceEnd();
-                mCallback.onWaveFilePublished(mWaveFileName, mfcc_avg.clone());
             }
             if (mAudioRecord != null) {
                 mAudioRecord.stop();
@@ -154,6 +148,15 @@ public class SoundRecorder {
             }
             mBuffer = null;
             mWaveFileName = null;
+        }
+
+        private void flushAudioBuffer() {
+            try {
+                writeWAVFile();
+                mCallback.onWaveFilePublished(mWaveFileName, mfcc_avg.clone());
+            } catch (IOException ex) {
+                Log.e(TAG, ex.toString());
+            }
         }
 
         /**
@@ -174,8 +177,8 @@ public class SoundRecorder {
                 throw new IllegalStateException();
             }
             mBuffer = new byte[minBufferSizeInBytes];
-            // initial capacity to hold 10 seconds of audio
-            mAudioBytes = ByteBuffer.allocate(MAX_SPEECH_LENGTH_MILLIS/1000*SAMPLE_RATE*2);
+            // the buffer will be flushed every 2 seconds
+            mAudioBytes = ByteBuffer.allocate(2*SAMPLE_RATE*2);
             return audioRecord;
         }
 
@@ -219,7 +222,9 @@ public class SoundRecorder {
                     }
                     if (mAudioBytes.remaining() <= 0) {
                         Log.d(TAG, "AudioBytes full");
-                        break;
+                        flushAudioBuffer();
+                        mAudioBytes.rewind();
+                        //break;
                     }
                     mAudioBytes.put(mBuffer, 0, size);
                 } else if (mLastVoiceHeardMillis != Long.MAX_VALUE) {
