@@ -113,7 +113,7 @@ public class MainActivity extends AppCompatActivity
         setContentView(R.layout.activity_main);
 
         mConversationMode = (CheckBox) findViewById(R.id.conversationMode);
-        mConversationMode.setChecked(true);
+        mConversationMode.setChecked(false);
 
         mStartButton = (Button) findViewById(R.id.startButton);
         mStartButton.setOnClickListener(new View.OnClickListener() {
@@ -184,6 +184,12 @@ public class MainActivity extends AppCompatActivity
         String[] outputNames = new String[] {OUTPUT_NAME};
         inferenceInterface.run(outputNames, logStats);
         inferenceInterface.fetch(OUTPUT_NAME, yy);
+        StringBuffer sb = new StringBuffer("pred: ");
+        for(int i = 0; i < yy.length; i++) {
+            sb.append(yy[i] + " ");
+        }
+        sb.append("\n");
+        Log.d(TAG, sb.toString());
         int classIndex = -1;
         for (int i = 0; i < 10; i++) {
             if (classIndex < 0 || yy[i] > yy[classIndex]) {
@@ -357,7 +363,7 @@ public class MainActivity extends AppCompatActivity
         @Override
         public void onWaveFilePublished(final String waveFilePath, final float[] mfcc) {
             // TODO: run inference
-            final String soundClass = getSoundClass();
+            final String soundClass = inferSoundClass(mfcc);
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
@@ -445,10 +451,6 @@ public class MainActivity extends AppCompatActivity
     private void playWavFile() {
         MediaPlayer mediaPlayer = MediaPlayer.create(getApplicationContext(), R.raw.applause_y);
         mediaPlayer.start();
-    }
-
-    private String getSoundClass() {
-        return SOUND_CLASSES[0];
     }
 
     class SoundItemClickListener implements SoundRecogAdapter.OnItemClickListener {
