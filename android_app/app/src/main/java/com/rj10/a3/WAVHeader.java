@@ -1,5 +1,7 @@
 package com.rj10.a3;
 
+import android.util.Log;
+
 public class WAVHeader {
     private byte[] mHeader;          // the complete header.
     private int mSampleRate;         // sampling frequency in Hz (e.g. 44100).
@@ -48,7 +50,7 @@ public class WAVHeader {
     }
 
     private void setHeader() {
-        byte[] header = new byte[46];
+        byte[] header = new byte[44];
         int offset = 0;
         int size;
 
@@ -94,6 +96,7 @@ public class WAVHeader {
         header[offset++] = (byte)((size >> 8) & 0xFF);
         header[offset++] = (byte)((size >> 16) & 0xFF);
         header[offset++] = (byte)((size >> 24) & 0xFF);
+        Log.d("deebug: ", "WAVE header offset=" + offset);
 
         mHeader = header;
     }

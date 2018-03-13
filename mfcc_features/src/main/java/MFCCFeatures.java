@@ -29,15 +29,19 @@ public class MFCCFeatures {
 		final boolean isSigned = true;
 		final boolean isBigEndian = false;
 
+
+		printWaveHeader(path);
+
 		InputStream inStream = new FileInputStream(path);
 			TarsosDSPAudioFormat audioFormat = new TarsosDSPAudioFormat(
 				SR, SAMPLE_SIZE_IN_BITS, numChannels, isSigned, isBigEndian);
 		UniversalAudioInputStream audioInputStream = new UniversalAudioInputStream(
 				inStream, audioFormat);
-		audioInputStream.skip(46); // skip the size of wav header
+		audioInputStream.skip(44); // skip the size of wav header
 
 		int samplesPerFrame = SR / 25;
-		int framesOverlap = samplesPerFrame / 4 * 3;
+		//int framesOverlap = samplesPerFrame / 4 * 3;
+		int framesOverlap = 0; // deebug
 		System.out.println("samplesPerFrame=" + samplesPerFrame);
 		System.out.println("framesOverlap=" + framesOverlap);
 		AudioDispatcher dispatcher = new AudioDispatcher(
@@ -88,6 +92,103 @@ public class MFCCFeatures {
 		dispatcher.run();
 		System.out.println("seconds processed: " + dispatcher.secondsProcessed());
 		return mfccList;
+	}
+
+	// WAVE header is 12 + 8 + 16 + 8 + ..
+	private void printWaveHeader(String filename) throws IOException {
+		// 0-3: RIFF
+		// 4-7: chunk size
+		// 8-11: fmt0
+		// 12-15
+		try (FileInputStream in = new FileInputStream(filename)) {
+        byte[] bytes = new byte[4];
+
+        // 0-3: RIFF
+        if (in.read(bytes) < 0) {
+            return;
+        }
+        printDescriptor("RIFF", bytes);
+
+				// 4-7: filesize - 8
+				if (in.read(bytes) < 0) {
+						return;
+				}
+				printInt("filesize-8", bytes);
+
+				// 8-11: WAVE
+				if (in.read(bytes) < 0) {
+            return;
+        }
+				printDescriptor("WAVE", bytes);
+
+				// 12-15: fmt0
+				if (in.read(bytes) < 0) {
+						return;
+				}
+				printDescriptor("fmt0", bytes);
+
+				// 16-19: should be size of the fmt chunk: 16
+				if (in.read(bytes) < 0) {
+						return;
+				}
+				printInt("fmtChunkSize", bytes);
+
+				// skip the rest of the fmt chunk
+				in.skip(16);
+
+
+				// 36-39: "data"
+				if (in.read(bytes) < 0) {
+						return;
+				}
+				printDescriptor("data", bytes);
+
+				// the data chunk size
+				if (in.read(bytes) < 0) {
+						return;
+				}
+				printInt("data chunk size", bytes);
+			}
+		}
+/*
+        // first subchunk will always be at byte 12
+        // there is no other dependable constant
+        in.skip(8);
+
+        for (;;) {
+            // read each chunk descriptor
+            if (in.read(bytes) < 0) {
+                break;
+            }
+
+            printDescriptor(bytes);
+
+            // read chunk length
+            if (in.read(bytes) < 0) {
+                break;
+            }
+
+            // skip the length of this chunk
+            // next bytes should be another descriptor or EOF
+            in.skip(
+                  (bytes[0] & 0xFF)
+                | (bytes[1] & 0xFF) << 8
+                | (bytes[2] & 0xFF) << 16
+                | (bytes[3] & 0xFF) << 24
+            );
+        }
+
+        System.out.println("end of file");
+    } */
+
+	private static void printInt(String name, byte[] bytes) throws IOException {
+		int x = java.nio.ByteBuffer.wrap(bytes).order(java.nio.ByteOrder.LITTLE_ENDIAN).getInt();
+		System.out.println(name + ": " + x);
+	}
+
+	private static void printDescriptor(String name, byte[] bytes) throws IOException {
+	   String desc = new String(bytes, "US-ASCII");
+		 System.out.println(name + ": " + desc);
 	}
 
 	public static void main(String[] args) throws IOException {
