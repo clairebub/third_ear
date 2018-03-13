@@ -74,6 +74,15 @@ def _extract_features_from_one_file(fn, verbose=False):
         return None
     if len(y.shape) > 1:
         y = y[:, 0] # retain only the first channel as if it's mono
+    if verbose:
+        print("mono y.shape", y.shape)
+        it = np.nditer(y, flags=['multi_index'])
+        while not it.finished:
+            v = it[0]
+            if abs(v) > 0.01:
+                print("%.6f <%s>" % (v, it.multi_index))
+            it.iternext()
+        #sf.write('new_file2.ogg', y, sr)
     #y = y[:DURATION*sr]
     mfcc = _compute_mfcc(y, sr, verbose)
     if verbose:
