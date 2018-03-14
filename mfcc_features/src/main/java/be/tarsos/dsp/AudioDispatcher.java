@@ -171,7 +171,6 @@ public class AudioDispatcher implements Runnable {
 		bytesToSkip = 0;
 
 		zeroPadLastBuffer = true;
-		//zeroPadLastBuffer = false;  // deebug
 	}
 
 	/**

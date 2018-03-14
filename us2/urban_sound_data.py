@@ -74,6 +74,11 @@ def _extract_features_from_one_file(fn, verbose=False):
         return None
     if len(y.shape) > 1:
         y = y[:, 0] # retain only the first channel as if it's mono
+    else:
+        pass
+        #print("filename", fn)
+        #sys.exit(1)
+
     if verbose:
         print("mono y.shape", y.shape)
         it = np.nditer(y, flags=['multi_index'])
