@@ -19,13 +19,14 @@ public class MFCCFeatures {
 	//	private static int counter = 0;
 	//@Test
 	public List<float[]> Test() throws IOException {
-		final String path = "data/7061-6-0-0.wav";
+		// final String path = "data/157867-8-0-10.wav";
+		final String path = "data/157867-8-0-10.wav";
 		final int SR = 44100;
 		final int SAMPLE_SIZE_IN_BITS = 16;
 		final int FREQUENCY_MAX = 11000;
 		final int FREQUENCY_MIN = 20;
 
-		final int numChannels = 2;
+		final int numChannels = 1;
 		final boolean isSigned = true;
 		final boolean isBigEndian = false;
 
@@ -83,7 +84,7 @@ public class MFCCFeatures {
 			public void processingFinished() {
 				for (int i = 0; i < N_MFCC; i++) {
 					mfcc_avg[i] /= iFrames;
-					// System.out.println(mfcc_avg[i]);
+					System.out.println(mfcc_avg[i]);
 				}
 				System.out.println("iFrames=" + iFrames);
 			}
