@@ -367,6 +367,9 @@ public class MainActivity extends AppCompatActivity
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
+                    if (mConversationMode.isChecked()) {
+                        return;
+                    }
                     SoundRecogItem item = SoundRecogItem.createItemForWavFileRecorded(new Date(), waveFilePath, soundClass);
                     mSoundItems.add(item);
                     mSoundRecogAdapter.notifyDataSetChanged();
